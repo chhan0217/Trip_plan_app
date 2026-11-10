@@ -6,10 +6,10 @@ import androidx.compose.runtime.Composable
 import com.example.tripplan.presentation.navigation.TripPlanNavHost
 
 @Composable
-fun TripPlanApp() {
+fun TripPlanApp(initialImportUri: String? = null) {
     MaterialTheme {
         Surface {
-            TripPlanNavHost()
+            TripPlanNavHost(initialImportUri = initialImportUri)
         }
     }
 }

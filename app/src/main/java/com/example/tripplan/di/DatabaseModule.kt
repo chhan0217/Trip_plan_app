@@ -2,8 +2,11 @@ package com.example.tripplan.di
 
 import android.content.Context
 import androidx.room.Room
-import androidx.room.migration.Migration
-import androidx.sqlite.db.SupportSQLiteDatabase
+import com.example.tripplan.data.local.DatabaseMigrations
+import com.example.tripplan.data.local.ExchangeRateDao
+import com.example.tripplan.data.local.ItineraryItemDao
+import com.example.tripplan.data.local.PackingItemDao
+import com.example.tripplan.data.local.PlaceDao
 import com.example.tripplan.data.local.RegionDao
 import com.example.tripplan.data.local.TripPlanDao
 import com.example.tripplan.data.local.TripPlanDatabase
@@ -26,7 +29,7 @@ object DatabaseModule {
             context,
             TripPlanDatabase::class.java,
             "trip_plan.db",
-        ).addMigrations(MIGRATION_1_2)
+        ).addMigrations(*DatabaseMigrations.All)
             .build()
     }
 
@@ -40,25 +43,17 @@ object DatabaseModule {
         return database.regionDao()
     }
 
-    private val MIGRATION_1_2 = object : Migration(1, 2) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL(
-                """
-                CREATE TABLE IF NOT EXISTS `regions` (
-                    `id` TEXT NOT NULL,
-                    `placeName` TEXT NOT NULL,
-                    `provinceName` TEXT NOT NULL,
-                    `provinceCode` TEXT NOT NULL,
-                    `cityName` TEXT NOT NULL,
-                    `cityCode` TEXT NOT NULL,
-                    `districtName` TEXT NOT NULL,
-                    `districtCode` TEXT NOT NULL,
-                    `latitude` REAL NOT NULL,
-                    `longitude` REAL NOT NULL,
-                    PRIMARY KEY(`id`)
-                )
-                """.trimIndent()
-            )
-        }
+    @Provides
+    fun provideItineraryItemDao(database: TripPlanDatabase): ItineraryItemDao {
+        return database.itineraryItemDao()
     }
+
+    @Provides
+    fun providePackingItemDao(database: TripPlanDatabase): PackingItemDao = database.packingItemDao()
+
+    @Provides
+    fun providePlaceDao(database: TripPlanDatabase): PlaceDao = database.placeDao()
+
+    @Provides
+    fun provideExchangeRateDao(database: TripPlanDatabase): ExchangeRateDao = database.exchangeRateDao()
 }

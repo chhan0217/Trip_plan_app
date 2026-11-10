@@ -6,11 +6,19 @@ import androidx.room.RoomDatabase
 @Database(
     entities = [
         TripPlanEntity::class,
+        ItineraryItemEntity::class,
+        PackingItemEntity::class,
+        PlaceEntity::class,
         RegionEntity::class,
+        ExchangeRateEntity::class,
     ],
-    version = 2,
+    version = 6,
 )
 abstract class TripPlanDatabase : RoomDatabase() {
     abstract fun tripPlanDao(): TripPlanDao
+    abstract fun itineraryItemDao(): ItineraryItemDao
+    abstract fun packingItemDao(): PackingItemDao
+    abstract fun placeDao(): PlaceDao
     abstract fun regionDao(): RegionDao
+    abstract fun exchangeRateDao(): ExchangeRateDao
 }
