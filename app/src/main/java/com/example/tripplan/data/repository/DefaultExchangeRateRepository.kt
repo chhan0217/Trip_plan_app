@@ -8,6 +8,7 @@ import com.example.tripplan.data.network.exchange.ExchangeRateRemoteDataSource
 import com.example.tripplan.domain.model.ExchangeRateRefreshResult
 import com.example.tripplan.domain.model.ExchangeRateSnapshot
 import com.example.tripplan.domain.repository.ExchangeRateRepository
+import com.example.tripplan.domain.repository.DeviceCapabilityRepository
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -19,6 +20,7 @@ class DefaultExchangeRateRepository @Inject constructor(
     private val exchangeRateDao: ExchangeRateDao,
     private val remoteDataSource: ExchangeRateRemoteDataSource,
     private val clock: Clock,
+    private val deviceCapabilityRepository: DeviceCapabilityRepository,
 ) : ExchangeRateRepository {
     override fun observeLatestRates(): Flow<ExchangeRateSnapshot?> {
         return exchangeRateDao.observeRates().map { entities ->
@@ -33,6 +35,13 @@ class DefaultExchangeRateRepository @Inject constructor(
 
     override suspend fun refreshLatestRates(today: LocalDate): ExchangeRateRefreshResult {
         val hasCache = exchangeRateDao.getRates().isNotEmpty()
+        if (!deviceCapabilityRepository.isNetworkAvailable()) {
+            return if (hasCache) {
+                ExchangeRateRefreshResult.KeptCached
+            } else {
+                ExchangeRateRefreshResult.Failed
+            }
+        }
         for (daysAgo in 0..MAX_LOOKBACK_DAYS) {
             val rateDate = today.minusDays(daysAgo.toLong())
             when (val result = remoteDataSource.getExchangeRates(rateDate)) {

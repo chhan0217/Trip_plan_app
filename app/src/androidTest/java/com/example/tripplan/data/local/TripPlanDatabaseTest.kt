@@ -337,6 +337,50 @@ class TripPlanDatabaseTest {
         )
         database.itineraryItemDao().insertItem(sampleItem(tripPlanId).copy(title = "두 번째", sortOrder = 1))
         database.itineraryItemDao().insertItem(sampleItem(tripPlanId).copy(title = "첫 번째", sortOrder = 0))
+        database.tripBudgetDao().insertBudgetWithInitial(
+            budget = TripBudgetEntity(tripPlanId, "JPY", 700L, 700L),
+            initialEntry = BudgetEntryEntity(
+                tripPlanId = tripPlanId,
+                type = "Initial",
+                amount = "105042.02",
+                krwPerUnit = "9.52",
+                rateDate = "2026-11-11",
+                convertedKrwAmount = "1000000",
+                memo = "최초 예산",
+                sortOrder = 0,
+                createdAt = 700L,
+                updatedAt = 700L,
+            ),
+        )
+        database.tripBudgetDao().insertAdditionalEntry(
+            BudgetEntryEntity(
+                tripPlanId = tripPlanId,
+                type = "Additional",
+                amount = "20618.56",
+                krwPerUnit = "9.70",
+                rateDate = "2026-11-12",
+                convertedKrwAmount = "200000",
+                memo = "추가 예산",
+                sortOrder = 1,
+                createdAt = 800L,
+                updatedAt = 800L,
+            ),
+        )
+        database.expenseDao().insertExpense(
+            ExpenseEntity(
+                tripPlanId = tripPlanId,
+                itineraryItemId = null,
+                occurredDate = "2026-11-09",
+                occurredTimeMinutes = 630,
+                amount = "2500",
+                currencyCode = "JPY",
+                krwPerUnit = "9.52",
+                rateDate = "2026-11-11",
+                convertedKrwAmount = "23800",
+                category = "Food",
+                createdAt = 900L,
+            ),
+        )
 
         database.close()
         database = Room.databaseBuilder(context, TripPlanDatabase::class.java, databaseName).build()
@@ -347,6 +391,16 @@ class TripPlanDatabaseTest {
             listOf("첫 번째", "두 번째"),
             database.itineraryItemDao().observeItems(tripPlanId).first().map { it.title },
         )
+        val reopenedBudget = database.tripBudgetDao().getBudget(tripPlanId)!!
+        assertEquals("JPY", reopenedBudget.budget.currencyCode)
+        assertEquals(
+            listOf("9.52", "9.70"),
+            reopenedBudget.entries.sortedBy { it.sortOrder }.map { it.krwPerUnit },
+        )
+        val reopenedExpense = database.expenseDao().observeExpenses(tripPlanId).first().single()
+        assertEquals("2500", reopenedExpense.amount)
+        assertEquals("9.52", reopenedExpense.krwPerUnit)
+        assertEquals("23800", reopenedExpense.convertedKrwAmount)
         database.close()
         context.deleteDatabase(databaseName)
         database = Room.inMemoryDatabaseBuilder(context, TripPlanDatabase::class.java).build()

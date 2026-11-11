@@ -8,6 +8,8 @@ import com.example.tripplan.data.network.exchange.ExchangeRateRemoteDataSource
 import com.example.tripplan.data.network.exchange.ExchangeRateRemoteSnapshot
 import com.example.tripplan.data.network.exchange.FrankfurterRateDto
 import com.example.tripplan.domain.model.ExchangeRateRefreshResult
+import com.example.tripplan.domain.model.RuntimePermission
+import com.example.tripplan.domain.repository.DeviceCapabilityRepository
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -37,7 +39,7 @@ class DefaultExchangeRateRepositoryTest {
                 ),
             )
         )
-        val repository = DefaultExchangeRateRepository(dao, remote, clock)
+        val repository = DefaultExchangeRateRepository(dao, remote, clock, OnlineDeviceCapabilities)
 
         val result = repository.refreshLatestRates(LocalDate.of(2026, 11, 10))
 
@@ -62,7 +64,7 @@ class DefaultExchangeRateRepositoryTest {
         val remote = FakeExchangeRateRemoteDataSource(
             defaultResult = NetworkResult.Failure(NetworkFailureReason.NoConnection)
         )
-        val repository = DefaultExchangeRateRepository(dao, remote, clock)
+        val repository = DefaultExchangeRateRepository(dao, remote, clock, OnlineDeviceCapabilities)
 
         val result = repository.refreshLatestRates(LocalDate.of(2026, 11, 10))
 
@@ -76,12 +78,26 @@ class DefaultExchangeRateRepositoryTest {
         val remote = FakeExchangeRateRemoteDataSource(
             defaultResult = NetworkResult.Failure(NetworkFailureReason.NoConnection)
         )
-        val repository = DefaultExchangeRateRepository(dao, remote, clock)
+        val repository = DefaultExchangeRateRepository(dao, remote, clock, OnlineDeviceCapabilities)
 
         val result = repository.refreshLatestRates(LocalDate.of(2026, 11, 10))
 
         assertEquals(ExchangeRateRefreshResult.Failed, result)
         assertTrue(dao.rates.value.isEmpty())
+    }
+
+    @Test
+    fun refreshLatestRates_skipsNetworkAndKeepsCacheWhenOffline() = runTest {
+        val cached = cachedRate()
+        val dao = FakeExchangeRateDao(listOf(cached))
+        val remote = FakeExchangeRateRemoteDataSource()
+        val repository = DefaultExchangeRateRepository(dao, remote, clock, OfflineDeviceCapabilities)
+
+        val result = repository.refreshLatestRates(LocalDate.of(2026, 11, 10))
+
+        assertEquals(ExchangeRateRefreshResult.KeptCached, result)
+        assertTrue(remote.requestedDates.isEmpty())
+        assertEquals(listOf(cached), dao.rates.value)
     }
 
     private fun success(
@@ -141,5 +157,16 @@ class DefaultExchangeRateRepositoryTest {
             requestedDates += searchDate
             return results[searchDate] ?: defaultResult
         }
+    }
+
+    private object OnlineDeviceCapabilities : FakeDeviceCapabilities(isOnline = true)
+    private object OfflineDeviceCapabilities : FakeDeviceCapabilities(isOnline = false)
+
+    private open class FakeDeviceCapabilities(
+        private val isOnline: Boolean,
+    ) : DeviceCapabilityRepository {
+        override fun isNetworkAvailable(): Boolean = isOnline
+        override fun isPermissionSupported(permission: RuntimePermission): Boolean = true
+        override fun isPermissionGranted(permission: RuntimePermission): Boolean = false
     }
 }
