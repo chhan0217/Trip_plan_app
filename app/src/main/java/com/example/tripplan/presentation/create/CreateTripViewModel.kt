@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.tripplan.domain.model.Region
 import com.example.tripplan.domain.model.TripPlanInput
+import com.example.tripplan.domain.model.CountryCurrencyCatalog
 import com.example.tripplan.domain.rule.TripPlanValidationError
 import com.example.tripplan.domain.usecase.CreateTripPlanResult
 import com.example.tripplan.domain.usecase.CreateTripPlanUseCase
@@ -55,6 +56,18 @@ class CreateTripViewModel @Inject constructor(
             )
         }
         searchRegions(value)
+    }
+
+    fun onCountrySelected(countryCode: String) {
+        val country = CountryCurrencyCatalog.find(countryCode) ?: return
+        _uiState.update {
+            it.copy(
+                countryCode = country.countryCode,
+                countryName = country.countryName,
+                currencyCode = country.currencyCode,
+                isSaveFailed = false,
+            )
+        }
     }
 
     fun onRegionClick(region: RegionSearchResultUiModel) {
@@ -130,6 +143,8 @@ class CreateTripViewModel @Inject constructor(
                             startDate = checkNotNull(startDate),
                             endDate = checkNotNull(endDate),
                             description = state.description,
+                            countryCode = state.countryCode,
+                            currencyCode = state.currencyCode,
                         )
                     )
                 ) {
@@ -198,6 +213,9 @@ data class CreateTripUiState(
     val startDate: LocalDate? = null,
     val endDate: LocalDate? = null,
     val description: String = "",
+    val countryCode: String = CountryCurrencyCatalog.default.countryCode,
+    val countryName: String = CountryCurrencyCatalog.default.countryName,
+    val currencyCode: String = CountryCurrencyCatalog.default.currencyCode,
     val isTitleError: Boolean = false,
     val dateError: CreateTripDateError? = null,
     val isSaving: Boolean = false,

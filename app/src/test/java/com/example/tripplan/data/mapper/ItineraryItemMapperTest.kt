@@ -2,6 +2,8 @@ package com.example.tripplan.data.mapper
 
 import com.example.tripplan.data.local.ItineraryItemEntity
 import com.example.tripplan.domain.model.ItineraryItem
+import com.example.tripplan.domain.model.ItineraryCost
+import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalTime
 import org.junit.Assert.assertEquals
@@ -74,5 +76,28 @@ class ItineraryItemMapperTest {
             ),
             result,
         )
+    }
+
+    @Test
+    fun costSnapshots_roundTripWithoutUsingLatestRate() {
+        val cost = ItineraryCost(
+            amount = BigDecimal("18000"),
+            currencyCode = "JPY",
+            krwPerUnit = BigDecimal("9.52"),
+            rateDate = LocalDate.of(2026, 11, 11),
+            convertedKrwAmount = BigDecimal("171360"),
+        )
+        val item = ItineraryItem(
+            id = 5,
+            tripPlanId = 2,
+            date = LocalDate.of(2026, 11, 11),
+            title = "식사",
+            place = "도쿄",
+            order = 0,
+            estimatedCost = cost.copy(amount = BigDecimal("15000"), convertedKrwAmount = BigDecimal("142800")),
+            actualCost = cost,
+        )
+
+        assertEquals(item, item.toEntity().toDomain())
     }
 }

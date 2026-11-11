@@ -8,4 +8,6 @@ data class TripPlanInput(
     val startDate: LocalDate,
     val endDate: LocalDate,
     val description: String = "",
+    val countryCode: String = "KR",
+    val currencyCode: String = "KRW",
 )

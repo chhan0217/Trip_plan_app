@@ -3,9 +3,14 @@ package com.example.tripplan.domain.usecase
 import com.example.tripplan.domain.model.ItineraryItem
 import com.example.tripplan.domain.model.TripPlan
 import com.example.tripplan.domain.model.TripPlanInput
+import com.example.tripplan.domain.model.BudgetEntry
+import com.example.tripplan.domain.model.BudgetEntryType
+import com.example.tripplan.domain.model.TripBudget
+import java.math.BigDecimal
 import com.example.tripplan.domain.rule.TripPlanValidationError
 import com.example.tripplan.testutil.FakeItineraryRepository
 import com.example.tripplan.testutil.FakeTripPlanRepository
+import com.example.tripplan.testutil.FakeTripBudgetRepository
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -13,13 +18,16 @@ import java.time.ZoneOffset
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TripPlanMutationUseCasesTest {
     @Test
     fun update_withoutOutOfRangeItems_updatesTrimmedFieldsAndTimestamp() = runTest {
         val trips = FakeTripPlanRepository().apply { setTrips(listOf(sampleTrip)) }
-        val useCase = UpdateTripPlanUseCase(trips, FakeItineraryRepository(), fixedClock)
+        val useCase = UpdateTripPlanUseCase(
+            trips, FakeItineraryRepository(), fixedClock, FakeTripBudgetRepository()
+        )
 
         val result = useCase(
             sampleTrip.id,
@@ -39,7 +47,7 @@ class TripPlanMutationUseCasesTest {
         val items = FakeItineraryRepository().apply {
             setItems(listOf(item(1L, LocalDate.of(2026, 11, 11))))
         }
-        val useCase = UpdateTripPlanUseCase(trips, items, fixedClock)
+        val useCase = UpdateTripPlanUseCase(trips, items, fixedClock, FakeTripBudgetRepository())
 
         val result = useCase(
             sampleTrip.id,
@@ -61,7 +69,7 @@ class TripPlanMutationUseCasesTest {
                 )
             )
         }
-        val useCase = UpdateTripPlanUseCase(trips, items, fixedClock)
+        val useCase = UpdateTripPlanUseCase(trips, items, fixedClock, FakeTripBudgetRepository())
 
         val result = useCase(
             sampleTrip.id,
@@ -80,6 +88,7 @@ class TripPlanMutationUseCasesTest {
             FakeTripPlanRepository().apply { setTrips(listOf(sampleTrip)) },
             FakeItineraryRepository(),
             fixedClock,
+            FakeTripBudgetRepository(),
         )
 
         val result = useCase(sampleTrip.id, validInput.copy(title = " "))
@@ -98,7 +107,9 @@ class TripPlanMutationUseCasesTest {
             completedAt = Instant.parse("2026-10-04T00:00:00Z"),
         )
         val trips = FakeTripPlanRepository().apply { setTrips(listOf(completedTrip)) }
-        val useCase = UpdateTripPlanUseCase(trips, FakeItineraryRepository(), fixedClock)
+        val useCase = UpdateTripPlanUseCase(
+            trips, FakeItineraryRepository(), fixedClock, FakeTripBudgetRepository()
+        )
 
         val result = useCase(completedTrip.id, validInput)
 
@@ -114,7 +125,9 @@ class TripPlanMutationUseCasesTest {
             completedAt = Instant.parse("2026-10-04T00:00:00Z"),
         )
         val trips = FakeTripPlanRepository().apply { setTrips(listOf(completedTrip)) }
-        val useCase = UpdateTripPlanUseCase(trips, FakeItineraryRepository(), fixedClock)
+        val useCase = UpdateTripPlanUseCase(
+            trips, FakeItineraryRepository(), fixedClock, FakeTripBudgetRepository()
+        )
 
         val result = useCase(completedTrip.id, validInput, clearCompletion = true)
         val updated = trips.getTripPlan(completedTrip.id)
@@ -132,6 +145,57 @@ class TripPlanMutationUseCasesTest {
 
         assertEquals(DeleteTripPlanResult.Success, result)
         assertNull(trips.getTripPlan(sampleTrip.id))
+    }
+
+    @Test
+    fun countryChange_withBudget_requiresResetThenUpdatesAtomically() = runTest {
+        val trips = FakeTripPlanRepository().apply { setTrips(listOf(sampleTrip)) }
+        val budgets = FakeTripBudgetRepository().apply {
+            val entry = BudgetEntry(
+                1, sampleTrip.id, BudgetEntryType.Initial, BigDecimal("100000"),
+                BigDecimal.ONE, sampleTrip.startDate, BigDecimal("100000"), "", 0,
+                Instant.EPOCH, Instant.EPOCH,
+            )
+            setBudget(TripBudget(sampleTrip.id, "KRW", listOf(entry), Instant.EPOCH, Instant.EPOCH))
+        }
+        val useCase = UpdateTripPlanUseCase(
+            trips, FakeItineraryRepository(), fixedClock, budgets
+        )
+        val japanInput = validInput.copy(countryCode = "JP", currencyCode = "JPY")
+
+        assertEquals(
+            UpdateTripPlanResult.RequiresBudgetResetConfirmation,
+            useCase(sampleTrip.id, japanInput),
+        )
+        assertEquals(
+            UpdateTripPlanResult.Success(sampleTrip.id),
+            useCase(sampleTrip.id, japanInput, resetBudgetForCurrencyChange = true),
+        )
+        assertEquals("JP", trips.getTripPlan(sampleTrip.id)?.countryCode)
+        assertEquals("JPY", trips.getTripPlan(sampleTrip.id)?.currencyCode)
+        assertTrue(trips.budgetReset)
+    }
+
+    @Test
+    fun countryChange_withExpenseOnly_stillRequiresFinancialResetConfirmation() = runTest {
+        val trips = FakeTripPlanRepository().apply {
+            setTrips(listOf(sampleTrip))
+            containsExpenses = true
+        }
+        val useCase = UpdateTripPlanUseCase(
+            trips,
+            FakeItineraryRepository(),
+            fixedClock,
+            FakeTripBudgetRepository(),
+        )
+
+        assertEquals(
+            UpdateTripPlanResult.RequiresBudgetResetConfirmation,
+            useCase(
+                sampleTrip.id,
+                validInput.copy(countryCode = "JP", currencyCode = "JPY"),
+            ),
+        )
     }
 
     private val sampleTrip = TripPlan(

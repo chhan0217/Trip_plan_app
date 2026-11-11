@@ -55,6 +55,7 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.tripplan.R
+import com.example.tripplan.presentation.common.CountrySelector
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -83,6 +84,7 @@ fun CreateTripScreen(
         onBackClick = onBackClick,
         onTripTitleChange = viewModel::onTripTitleChange,
         onTripPlaceChange = viewModel::onTripPlaceChange,
+        onCountrySelected = { viewModel.onCountrySelected(it.countryCode) },
         onRegionClick = viewModel::onRegionClick,
         onRegionSearchDismiss = viewModel::onRegionSearchDismiss,
         onTripDateRangeChange = viewModel::onTripDateRangeChange,
@@ -98,6 +100,7 @@ internal fun CreateTripScreenContent(
     onBackClick: () -> Unit = {},
     onTripTitleChange: (String) -> Unit = {},
     onTripPlaceChange: (String) -> Unit = {},
+    onCountrySelected: (com.example.tripplan.domain.model.TravelCountry) -> Unit = {},
     onRegionClick: (RegionSearchResultUiModel) -> Unit = {},
     onRegionSearchDismiss: () -> Unit = {},
     onTripDateRangeChange: (LocalDate?, LocalDate?) -> Unit = { _, _ -> },
@@ -123,6 +126,7 @@ internal fun CreateTripScreenContent(
                 uiState = uiState,
                 onTripTitleChange = onTripTitleChange,
                 onTripPlaceChange = onTripPlaceChange,
+                onCountrySelected = onCountrySelected,
                 onRegionClick = onRegionClick,
                 onRegionSearchDismiss = onRegionSearchDismiss,
                 onTripDateClick = { isDatePickerVisible = true },
@@ -188,6 +192,7 @@ private fun TripInfoFields(
     uiState: CreateTripUiState,
     onTripTitleChange: (String) -> Unit,
     onTripPlaceChange: (String) -> Unit,
+    onCountrySelected: (com.example.tripplan.domain.model.TravelCountry) -> Unit,
     onRegionClick: (RegionSearchResultUiModel) -> Unit,
     onRegionSearchDismiss: () -> Unit,
     onTripDateClick: () -> Unit,
@@ -211,6 +216,11 @@ private fun TripInfoFields(
             } else null,
             isError = uiState.isTitleError,
             singleLine = true,
+        )
+        CountrySelector(
+            countryCode = uiState.countryCode,
+            currencyCode = uiState.currencyCode,
+            onCountrySelected = onCountrySelected,
         )
         Box(modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(

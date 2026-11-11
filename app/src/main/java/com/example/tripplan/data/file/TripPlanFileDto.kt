@@ -16,6 +16,8 @@ data class SharedTripDto(
     val startDate: String,
     val endDate: String,
     val description: String,
+    val countryCode: String = "KR",
+    val currencyCode: String = "KRW",
 )
 
 @Serializable

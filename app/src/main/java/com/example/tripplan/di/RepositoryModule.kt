@@ -18,6 +18,12 @@ import com.example.tripplan.data.repository.DefaultExchangeRateRepository
 import com.example.tripplan.data.repository.DefaultExchangeRatePreferenceRepository
 import com.example.tripplan.domain.repository.ExchangeRateRepository
 import com.example.tripplan.domain.repository.ExchangeRatePreferenceRepository
+import com.example.tripplan.data.repository.DefaultTripBudgetRepository
+import com.example.tripplan.domain.repository.TripBudgetRepository
+import com.example.tripplan.data.repository.DefaultExpenseRepository
+import com.example.tripplan.domain.repository.ExpenseRepository
+import com.example.tripplan.data.repository.DefaultTripMoneyDisplayPreferenceRepository
+import com.example.tripplan.domain.repository.TripMoneyDisplayPreferenceRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -64,4 +70,17 @@ abstract class RepositoryModule {
     abstract fun bindExchangeRatePreferenceRepository(
         repository: DefaultExchangeRatePreferenceRepository,
     ): ExchangeRatePreferenceRepository
+
+    @Binds
+    abstract fun bindTripBudgetRepository(
+        repository: DefaultTripBudgetRepository,
+    ): TripBudgetRepository
+
+    @Binds
+    abstract fun bindExpenseRepository(repository: DefaultExpenseRepository): ExpenseRepository
+
+    @Binds
+    abstract fun bindTripMoneyDisplayPreferenceRepository(
+        repository: DefaultTripMoneyDisplayPreferenceRepository,
+    ): TripMoneyDisplayPreferenceRepository
 }

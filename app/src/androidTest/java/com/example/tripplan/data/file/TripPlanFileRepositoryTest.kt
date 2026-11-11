@@ -91,6 +91,32 @@ class TripPlanFileRepositoryTest {
     }
 
     @Test
+    fun version2_roundTripPreservesStructuredCountryAndCurrency() = runTest {
+        val tripId = database.tripPlanDao().insertTripPlan(
+            TripPlanEntity(
+                title = "도쿄 여행",
+                destination = "도쿄",
+                startDate = "2026-12-10",
+                endDate = "2026-12-12",
+                description = "",
+                createdAt = 1,
+                updatedAt = 1,
+                countryCode = "JP",
+                currencyCode = "JPY",
+            )
+        )
+
+        val exported = repository.exportTrip(tripId) as TripPlanFileResult.Success
+        val imported = repository.importTrip(exported.value.content) as TripPlanFileResult.Success
+        val trip = database.tripPlanDao().getTripPlan(imported.value)
+
+        assertTrue(exported.value.content.contains("\"countryCode\": \"JP\""))
+        assertTrue(exported.value.content.contains("\"currencyCode\": \"JPY\""))
+        assertEquals("JP", trip?.countryCode)
+        assertEquals("JPY", trip?.currencyCode)
+    }
+
+    @Test
     fun preview_validFile_returnsSummary() {
         val result = repository.previewImport(validFile) as TripPlanFileResult.Success
 

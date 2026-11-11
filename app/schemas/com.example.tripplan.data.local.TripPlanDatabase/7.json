@@ -1,0 +1,734 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 7,
+    "identityHash": "3747675ef87b42a2b214937eab983f1e",
+    "entities": [
+      {
+        "tableName": "trip_plans",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `destination` TEXT NOT NULL DEFAULT '', `startDate` TEXT NOT NULL, `endDate` TEXT NOT NULL, `description` TEXT NOT NULL DEFAULT '', `createdAt` INTEGER NOT NULL DEFAULT 0, `updatedAt` INTEGER NOT NULL DEFAULT 0, `completedAt` INTEGER, `countryCode` TEXT NOT NULL DEFAULT 'KR', `currencyCode` TEXT NOT NULL DEFAULT 'KRW')",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "destination",
+            "columnName": "destination",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "startDate",
+            "columnName": "startDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endDate",
+            "columnName": "endDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "completedAt",
+            "columnName": "completedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "countryCode",
+            "columnName": "countryCode",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'KR'"
+          },
+          {
+            "fieldPath": "currencyCode",
+            "columnName": "currencyCode",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'KRW'"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "itinerary_items",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `tripPlanId` INTEGER NOT NULL, `date` TEXT NOT NULL, `title` TEXT NOT NULL, `place` TEXT NOT NULL, `startTime` TEXT, `endTime` TEXT, `note` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL, `placeId` INTEGER, `estimatedAmount` TEXT, `estimatedCurrencyCode` TEXT, `estimatedKrwPerUnit` TEXT, `estimatedRateDate` TEXT, `estimatedConvertedKrwAmount` TEXT, `actualAmount` TEXT, `actualCurrencyCode` TEXT, `actualKrwPerUnit` TEXT, `actualRateDate` TEXT, `actualConvertedKrwAmount` TEXT, FOREIGN KEY(`tripPlanId`) REFERENCES `trip_plans`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`placeId`) REFERENCES `places`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tripPlanId",
+            "columnName": "tripPlanId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "place",
+            "columnName": "place",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startTime",
+            "columnName": "startTime",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "endTime",
+            "columnName": "endTime",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "placeId",
+            "columnName": "placeId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "estimatedAmount",
+            "columnName": "estimatedAmount",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "estimatedCurrencyCode",
+            "columnName": "estimatedCurrencyCode",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "estimatedKrwPerUnit",
+            "columnName": "estimatedKrwPerUnit",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "estimatedRateDate",
+            "columnName": "estimatedRateDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "estimatedConvertedKrwAmount",
+            "columnName": "estimatedConvertedKrwAmount",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "actualAmount",
+            "columnName": "actualAmount",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "actualCurrencyCode",
+            "columnName": "actualCurrencyCode",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "actualKrwPerUnit",
+            "columnName": "actualKrwPerUnit",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "actualRateDate",
+            "columnName": "actualRateDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "actualConvertedKrwAmount",
+            "columnName": "actualConvertedKrwAmount",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_itinerary_items_tripPlanId",
+            "unique": false,
+            "columnNames": [
+              "tripPlanId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_itinerary_items_tripPlanId` ON `${TABLE_NAME}` (`tripPlanId`)"
+          },
+          {
+            "name": "index_itinerary_items_tripPlanId_date_sortOrder",
+            "unique": false,
+            "columnNames": [
+              "tripPlanId",
+              "date",
+              "sortOrder"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_itinerary_items_tripPlanId_date_sortOrder` ON `${TABLE_NAME}` (`tripPlanId`, `date`, `sortOrder`)"
+          },
+          {
+            "name": "index_itinerary_items_placeId",
+            "unique": false,
+            "columnNames": [
+              "placeId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_itinerary_items_placeId` ON `${TABLE_NAME}` (`placeId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "trip_plans",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "tripPlanId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "places",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "placeId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "packing_items",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `tripPlanId` INTEGER NOT NULL, `name` TEXT NOT NULL, `category` TEXT NOT NULL, `quantity` INTEGER NOT NULL, `memo` TEXT NOT NULL, `type` TEXT NOT NULL, `checkedAt` INTEGER, `sortOrder` INTEGER NOT NULL, FOREIGN KEY(`tripPlanId`) REFERENCES `trip_plans`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tripPlanId",
+            "columnName": "tripPlanId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "category",
+            "columnName": "category",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "quantity",
+            "columnName": "quantity",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "memo",
+            "columnName": "memo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "checkedAt",
+            "columnName": "checkedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_packing_items_tripPlanId",
+            "unique": false,
+            "columnNames": [
+              "tripPlanId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_packing_items_tripPlanId` ON `${TABLE_NAME}` (`tripPlanId`)"
+          },
+          {
+            "name": "index_packing_items_tripPlanId_type_sortOrder",
+            "unique": false,
+            "columnNames": [
+              "tripPlanId",
+              "type",
+              "sortOrder"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_packing_items_tripPlanId_type_sortOrder` ON `${TABLE_NAME}` (`tripPlanId`, `type`, `sortOrder`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "trip_plans",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "tripPlanId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "places",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `address` TEXT NOT NULL, `latitude` REAL, `longitude` REAL, `source` TEXT NOT NULL, `providerName` TEXT, `externalId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "address",
+            "columnName": "address",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "latitude",
+            "columnName": "latitude",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "longitude",
+            "columnName": "longitude",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "providerName",
+            "columnName": "providerName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "externalId",
+            "columnName": "externalId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_places_name",
+            "unique": false,
+            "columnNames": [
+              "name"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_places_name` ON `${TABLE_NAME}` (`name`)"
+          },
+          {
+            "name": "index_places_providerName_externalId",
+            "unique": false,
+            "columnNames": [
+              "providerName",
+              "externalId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_places_providerName_externalId` ON `${TABLE_NAME}` (`providerName`, `externalId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "regions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `placeName` TEXT NOT NULL, `provinceName` TEXT NOT NULL, `provinceCode` TEXT NOT NULL, `cityName` TEXT NOT NULL, `cityCode` TEXT NOT NULL, `districtName` TEXT NOT NULL, `districtCode` TEXT NOT NULL, `latitude` REAL NOT NULL, `longitude` REAL NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "placeName",
+            "columnName": "placeName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "provinceName",
+            "columnName": "provinceName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "provinceCode",
+            "columnName": "provinceCode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cityName",
+            "columnName": "cityName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cityCode",
+            "columnName": "cityCode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "districtName",
+            "columnName": "districtName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "districtCode",
+            "columnName": "districtCode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "latitude",
+            "columnName": "latitude",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "longitude",
+            "columnName": "longitude",
+            "affinity": "REAL",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "exchange_rates",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`currencyCode` TEXT NOT NULL, `currencyName` TEXT NOT NULL, `krwPerUnit` TEXT NOT NULL, `rateDate` TEXT NOT NULL, `fetchedAt` INTEGER NOT NULL, PRIMARY KEY(`currencyCode`))",
+        "fields": [
+          {
+            "fieldPath": "currencyCode",
+            "columnName": "currencyCode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currencyName",
+            "columnName": "currencyName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "krwPerUnit",
+            "columnName": "krwPerUnit",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rateDate",
+            "columnName": "rateDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fetchedAt",
+            "columnName": "fetchedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "currencyCode"
+          ]
+        }
+      },
+      {
+        "tableName": "trip_budgets",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`tripPlanId` INTEGER NOT NULL, `currencyCode` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`tripPlanId`), FOREIGN KEY(`tripPlanId`) REFERENCES `trip_plans`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "tripPlanId",
+            "columnName": "tripPlanId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currencyCode",
+            "columnName": "currencyCode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "tripPlanId"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "trip_plans",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "tripPlanId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "budget_entries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `tripPlanId` INTEGER NOT NULL, `type` TEXT NOT NULL, `amount` TEXT NOT NULL, `krwPerUnit` TEXT NOT NULL, `rateDate` TEXT NOT NULL, `convertedKrwAmount` TEXT NOT NULL, `memo` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, FOREIGN KEY(`tripPlanId`) REFERENCES `trip_budgets`(`tripPlanId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tripPlanId",
+            "columnName": "tripPlanId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "amount",
+            "columnName": "amount",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "krwPerUnit",
+            "columnName": "krwPerUnit",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rateDate",
+            "columnName": "rateDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "convertedKrwAmount",
+            "columnName": "convertedKrwAmount",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "memo",
+            "columnName": "memo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_budget_entries_tripPlanId",
+            "unique": false,
+            "columnNames": [
+              "tripPlanId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_budget_entries_tripPlanId` ON `${TABLE_NAME}` (`tripPlanId`)"
+          },
+          {
+            "name": "index_budget_entries_tripPlanId_sortOrder",
+            "unique": true,
+            "columnNames": [
+              "tripPlanId",
+              "sortOrder"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_budget_entries_tripPlanId_sortOrder` ON `${TABLE_NAME}` (`tripPlanId`, `sortOrder`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "trip_budgets",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "tripPlanId"
+            ],
+            "referencedColumns": [
+              "tripPlanId"
+            ]
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '3747675ef87b42a2b214937eab983f1e')"
+    ]
+  }
+}

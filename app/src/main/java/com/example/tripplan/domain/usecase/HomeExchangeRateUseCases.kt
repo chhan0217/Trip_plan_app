@@ -10,6 +10,12 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 
+class ObserveLatestExchangeRatesUseCase @Inject constructor(
+    private val exchangeRateRepository: ExchangeRateRepository,
+) {
+    operator fun invoke() = exchangeRateRepository.observeLatestRates()
+}
+
 class ObserveHomeExchangeRatesUseCase @Inject constructor(
     private val exchangeRateRepository: ExchangeRateRepository,
     private val preferenceRepository: ExchangeRatePreferenceRepository,

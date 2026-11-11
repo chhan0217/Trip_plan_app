@@ -1,7 +1,22 @@
 package com.example.tripplan.domain.model
 
+import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalTime
+
+data class ItineraryCost(
+    val amount: BigDecimal,
+    val currencyCode: String,
+    val krwPerUnit: BigDecimal,
+    val rateDate: LocalDate,
+    val convertedKrwAmount: BigDecimal,
+)
+
+data class ItineraryCostInput(
+    val amount: BigDecimal,
+    val currencyCode: String,
+    val krwPerUnit: BigDecimal,
+)
 
 data class ItineraryItem(
     val id: Long,
@@ -14,6 +29,8 @@ data class ItineraryItem(
     val note: String = "",
     val order: Int,
     val placeId: Long? = null,
+    val estimatedCost: ItineraryCost? = null,
+    val actualCost: ItineraryCost? = null,
 )
 
 data class ItineraryItemInput(

@@ -100,5 +100,9 @@ class DefaultTripPlanRepositoryTest {
         override suspend fun deleteTripPlan(tripPlanId: Long) = Unit
 
         override suspend fun deleteItineraryItemsByIds(itemIds: List<Long>) = Unit
+        override suspend fun deleteTripBudget(tripPlanId: Long) = Unit
+        override suspend fun deleteExpenses(tripPlanId: Long) = Unit
+        override suspend fun hasExpenses(tripPlanId: Long): Boolean = false
+        override suspend fun clearItineraryCosts(tripPlanId: Long) = Unit
     }
 }

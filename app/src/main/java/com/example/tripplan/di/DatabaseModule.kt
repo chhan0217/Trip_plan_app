@@ -10,6 +10,8 @@ import com.example.tripplan.data.local.PlaceDao
 import com.example.tripplan.data.local.RegionDao
 import com.example.tripplan.data.local.TripPlanDao
 import com.example.tripplan.data.local.TripPlanDatabase
+import com.example.tripplan.data.local.TripBudgetDao
+import com.example.tripplan.data.local.ExpenseDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -56,4 +58,10 @@ object DatabaseModule {
 
     @Provides
     fun provideExchangeRateDao(database: TripPlanDatabase): ExchangeRateDao = database.exchangeRateDao()
+
+    @Provides
+    fun provideTripBudgetDao(database: TripPlanDatabase): TripBudgetDao = database.tripBudgetDao()
+
+    @Provides
+    fun provideExpenseDao(database: TripPlanDatabase): ExpenseDao = database.expenseDao()
 }

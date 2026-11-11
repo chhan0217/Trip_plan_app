@@ -15,6 +15,8 @@ fun TripPlanEntity.toDomain(): TripPlan = TripPlan(
     createdAt = Instant.ofEpochMilli(createdAt),
     updatedAt = Instant.ofEpochMilli(updatedAt),
     completedAt = completedAt?.let(Instant::ofEpochMilli),
+    countryCode = countryCode,
+    currencyCode = currencyCode,
 )
 
 fun TripPlan.toEntity(): TripPlanEntity = TripPlanEntity(
@@ -27,4 +29,6 @@ fun TripPlan.toEntity(): TripPlanEntity = TripPlanEntity(
     createdAt = createdAt.toEpochMilli(),
     updatedAt = updatedAt.toEpochMilli(),
     completedAt = completedAt?.toEpochMilli(),
+    countryCode = countryCode,
+    currencyCode = currencyCode,
 )

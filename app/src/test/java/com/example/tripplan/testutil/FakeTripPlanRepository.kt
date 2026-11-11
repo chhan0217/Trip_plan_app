@@ -14,6 +14,8 @@ class FakeTripPlanRepository : TripPlanRepository {
     var nextCreatedId: Long = 1L
     var createFailure: Exception? = null
     var lastDeletedItineraryItemIds: List<Long> = emptyList()
+    var budgetReset = false
+    var containsExpenses = false
 
     override fun observeTripPlans(): Flow<List<TripPlan>> = trips
 
@@ -28,6 +30,8 @@ class FakeTripPlanRepository : TripPlanRepository {
     override suspend fun getTripPlan(tripPlanId: Long): TripPlan? {
         return trips.value.firstOrNull { it.id == tripPlanId }
     }
+
+    override suspend fun hasExpenses(tripPlanId: Long): Boolean = containsExpenses
 
     override suspend fun createTripPlan(input: TripPlanInput): Long {
         createFailure?.let { throw it }
@@ -55,6 +59,14 @@ class FakeTripPlanRepository : TripPlanRepository {
     ) {
         lastDeletedItineraryItemIds = itemIds
         setTrips(trips.value.map { current -> if (current.id == tripPlan.id) tripPlan else current })
+    }
+
+    override suspend fun updateTripPlanAndResetBudget(
+        tripPlan: TripPlan,
+        itemIds: List<Long>,
+    ) {
+        budgetReset = true
+        updateTripPlanAndDeleteItineraryItems(tripPlan, itemIds)
     }
 
     override suspend fun deleteTripPlan(tripPlanId: Long) {

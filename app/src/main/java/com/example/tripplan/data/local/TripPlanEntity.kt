@@ -20,4 +20,8 @@ data class TripPlanEntity(
     @ColumnInfo(defaultValue = "0")
     val updatedAt: Long,
     val completedAt: Long? = null,
+    @ColumnInfo(defaultValue = "'KR'")
+    val countryCode: String = "KR",
+    @ColumnInfo(defaultValue = "'KRW'")
+    val currencyCode: String = "KRW",
 )

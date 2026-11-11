@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import com.example.tripplan.presentation.create.ComposeTestActivity
 import java.time.LocalDate
 import org.junit.Assert.assertTrue
@@ -23,8 +24,8 @@ class EditTripScreenTest {
 
         composeRule.onNodeWithText("제주 여행").assertIsDisplayed()
         composeRule.onNodeWithText("여행 날짜").assertIsDisplayed()
-        composeRule.onNodeWithText("변경사항 저장").assertIsDisplayed()
-        composeRule.onNodeWithText("여행 삭제").assertIsDisplayed()
+        composeRule.onNodeWithText("변경사항 저장").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("여행 삭제").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -36,7 +37,7 @@ class EditTripScreenTest {
             }
         }
 
-        composeRule.onNodeWithText("변경사항 저장").performClick()
+        composeRule.onNodeWithText("변경사항 저장").performScrollTo().performClick()
         composeRule.runOnIdle { assertTrue(clicked) }
     }
 
@@ -63,6 +64,22 @@ class EditTripScreenTest {
 
         composeRule.onNodeWithText("여행과 모든 일정을 삭제할까요? 삭제한 데이터는 복구할 수 없습니다.")
             .assertIsDisplayed()
+    }
+
+    @Test
+    fun budgetResetState_displaysCurrencyChangeWarning() {
+        composeRule.setContent {
+            MaterialTheme {
+                EditTripScreenContent(
+                    uiState = state().copy(isBudgetResetConfirmationVisible = true)
+                )
+            }
+        }
+
+        composeRule.onNodeWithText(
+            "국가를 변경하면 기존 여행 예산, 일정 비용과 지출 기록이 초기화됩니다. 계속할까요?"
+        ).assertIsDisplayed()
+        composeRule.onNodeWithText("초기화 후 변경").assertIsDisplayed()
     }
 
     private fun state() = EditTripUiState(

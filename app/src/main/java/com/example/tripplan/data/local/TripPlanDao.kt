@@ -44,6 +44,33 @@ interface TripPlanDao {
     @Query("DELETE FROM itinerary_items WHERE id IN (:itemIds)")
     suspend fun deleteItineraryItemsByIds(itemIds: List<Long>)
 
+    @Query("DELETE FROM trip_budgets WHERE tripPlanId = :tripPlanId")
+    suspend fun deleteTripBudget(tripPlanId: Long)
+
+    @Query("DELETE FROM expenses WHERE tripPlanId = :tripPlanId")
+    suspend fun deleteExpenses(tripPlanId: Long)
+
+    @Query("SELECT EXISTS(SELECT 1 FROM expenses WHERE tripPlanId = :tripPlanId LIMIT 1)")
+    suspend fun hasExpenses(tripPlanId: Long): Boolean
+
+    @Query(
+        """
+        UPDATE itinerary_items SET
+            estimatedAmount = NULL,
+            estimatedCurrencyCode = NULL,
+            estimatedKrwPerUnit = NULL,
+            estimatedRateDate = NULL,
+            estimatedConvertedKrwAmount = NULL,
+            actualAmount = NULL,
+            actualCurrencyCode = NULL,
+            actualKrwPerUnit = NULL,
+            actualRateDate = NULL,
+            actualConvertedKrwAmount = NULL
+        WHERE tripPlanId = :tripPlanId
+        """
+    )
+    suspend fun clearItineraryCosts(tripPlanId: Long)
+
     @Transaction
     suspend fun updateTripPlanAndDeleteItineraryItems(
         tripPlan: TripPlanEntity,
@@ -51,5 +78,17 @@ interface TripPlanDao {
     ) {
         updateTripPlan(tripPlan)
         if (itemIds.isNotEmpty()) deleteItineraryItemsByIds(itemIds)
+    }
+
+    @Transaction
+    suspend fun updateTripPlanAndResetBudget(
+        tripPlan: TripPlanEntity,
+        itemIds: List<Long>,
+    ) {
+        updateTripPlan(tripPlan)
+        if (itemIds.isNotEmpty()) deleteItineraryItemsByIds(itemIds)
+        deleteTripBudget(tripPlan.id)
+        clearItineraryCosts(tripPlan.id)
+        deleteExpenses(tripPlan.id)
     }
 }

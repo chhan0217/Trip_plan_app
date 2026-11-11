@@ -194,6 +194,10 @@ class HomeViewModelTest {
                 tripPlan: TripPlan,
                 itemIds: List<Long>,
             ) = Unit
+            override suspend fun updateTripPlanAndResetBudget(
+                tripPlan: TripPlan,
+                itemIds: List<Long>,
+            ) = Unit
             override suspend fun deleteTripPlan(tripPlanId: Long) = Unit
         }
     }

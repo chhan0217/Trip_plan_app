@@ -159,11 +159,187 @@ object DatabaseMigrations {
         }
     }
 
+    val Migration6To7 = object : Migration(6, 7) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `trip_plans` ADD COLUMN `countryCode` TEXT NOT NULL DEFAULT 'KR'")
+            db.execSQL("ALTER TABLE `trip_plans` ADD COLUMN `currencyCode` TEXT NOT NULL DEFAULT 'KRW'")
+            db.execSQL("ALTER TABLE `itinerary_items` ADD COLUMN `estimatedAmount` TEXT")
+            db.execSQL("ALTER TABLE `itinerary_items` ADD COLUMN `estimatedCurrencyCode` TEXT")
+            db.execSQL("ALTER TABLE `itinerary_items` ADD COLUMN `estimatedKrwPerUnit` TEXT")
+            db.execSQL("ALTER TABLE `itinerary_items` ADD COLUMN `estimatedRateDate` TEXT")
+            db.execSQL("ALTER TABLE `itinerary_items` ADD COLUMN `estimatedConvertedKrwAmount` TEXT")
+            db.execSQL("ALTER TABLE `itinerary_items` ADD COLUMN `actualAmount` TEXT")
+            db.execSQL("ALTER TABLE `itinerary_items` ADD COLUMN `actualCurrencyCode` TEXT")
+            db.execSQL("ALTER TABLE `itinerary_items` ADD COLUMN `actualKrwPerUnit` TEXT")
+            db.execSQL("ALTER TABLE `itinerary_items` ADD COLUMN `actualRateDate` TEXT")
+            db.execSQL("ALTER TABLE `itinerary_items` ADD COLUMN `actualConvertedKrwAmount` TEXT")
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `trip_budgets` (
+                    `tripPlanId` INTEGER NOT NULL,
+                    `currencyCode` TEXT NOT NULL,
+                    `createdAt` INTEGER NOT NULL,
+                    `updatedAt` INTEGER NOT NULL,
+                    PRIMARY KEY(`tripPlanId`),
+                    FOREIGN KEY(`tripPlanId`) REFERENCES `trip_plans`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `budget_entries` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `tripPlanId` INTEGER NOT NULL,
+                    `type` TEXT NOT NULL,
+                    `amount` TEXT NOT NULL,
+                    `krwPerUnit` TEXT NOT NULL,
+                    `rateDate` TEXT NOT NULL,
+                    `convertedKrwAmount` TEXT NOT NULL,
+                    `memo` TEXT NOT NULL,
+                    `sortOrder` INTEGER NOT NULL,
+                    `createdAt` INTEGER NOT NULL,
+                    `updatedAt` INTEGER NOT NULL,
+                    FOREIGN KEY(`tripPlanId`) REFERENCES `trip_budgets`(`tripPlanId`) ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_budget_entries_tripPlanId` " +
+                    "ON `budget_entries` (`tripPlanId`)"
+            )
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS `index_budget_entries_tripPlanId_sortOrder` " +
+                    "ON `budget_entries` (`tripPlanId`, `sortOrder`)"
+            )
+        }
+    }
+
+    val Migration7To8 = object : Migration(7, 8) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Early development builds briefly used v7 before country fields were added.
+            // Check the actual table so both variants can migrate safely.
+            if (!db.hasColumn("trip_plans", "countryCode")) {
+                db.execSQL(
+                    "ALTER TABLE `trip_plans` ADD COLUMN `countryCode` TEXT NOT NULL DEFAULT 'KR'"
+                )
+            }
+            if (!db.hasColumn("trip_plans", "currencyCode")) {
+                db.execSQL(
+                    "ALTER TABLE `trip_plans` ADD COLUMN `currencyCode` TEXT NOT NULL DEFAULT 'KRW'"
+                )
+            }
+        }
+    }
+
+    val Migration8To9 = object : Migration(8, 9) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `expenses` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `tripPlanId` INTEGER NOT NULL,
+                    `itineraryItemId` INTEGER,
+                    `occurredDate` TEXT NOT NULL,
+                    `occurredTimeMinutes` INTEGER NOT NULL,
+                    `amount` TEXT NOT NULL,
+                    `currencyCode` TEXT NOT NULL,
+                    `krwPerUnit` TEXT NOT NULL,
+                    `rateDate` TEXT NOT NULL,
+                    `convertedKrwAmount` TEXT NOT NULL,
+                    `category` TEXT NOT NULL,
+                    `createdAt` INTEGER NOT NULL,
+                    FOREIGN KEY(`tripPlanId`) REFERENCES `trip_plans`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE,
+                    FOREIGN KEY(`itineraryItemId`) REFERENCES `itinerary_items`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_expenses_tripPlanId` ON `expenses` (`tripPlanId`)"
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_expenses_itineraryItemId` " +
+                    "ON `expenses` (`itineraryItemId`)"
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_expenses_tripPlanId_occurredDate_occurredTimeMinutes` " +
+                    "ON `expenses` (`tripPlanId`, `occurredDate`, `occurredTimeMinutes`)"
+            )
+        }
+    }
+
+    val Migration9To10 = object : Migration(9, 10) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                INSERT INTO expenses (
+                    tripPlanId, itineraryItemId, occurredDate, occurredTimeMinutes,
+                    amount, currencyCode, krwPerUnit, rateDate,
+                    convertedKrwAmount, category, createdAt
+                )
+                SELECT
+                    item.tripPlanId,
+                    item.id,
+                    item.date,
+                    CASE
+                        WHEN item.startTime IS NULL THEN 0
+                        ELSE CAST(substr(item.startTime, 1, 2) AS INTEGER) * 60 +
+                            CAST(substr(item.startTime, 4, 2) AS INTEGER)
+                    END,
+                    item.actualAmount,
+                    item.actualCurrencyCode,
+                    CASE
+                        WHEN item.actualCurrencyCode = 'KRW' AND trip.currencyCode != 'KRW'
+                        THEN COALESCE((
+                            SELECT rate.krwPerUnit FROM exchange_rates AS rate
+                            WHERE rate.currencyCode = trip.currencyCode
+                            LIMIT 1
+                        ), item.actualKrwPerUnit)
+                        ELSE item.actualKrwPerUnit
+                    END,
+                    item.actualRateDate,
+                    item.actualConvertedKrwAmount,
+                    'Other',
+                    trip.updatedAt
+                FROM itinerary_items AS item
+                INNER JOIN trip_plans AS trip ON trip.id = item.tripPlanId
+                WHERE item.actualAmount IS NOT NULL
+                    AND item.actualCurrencyCode IS NOT NULL
+                    AND item.actualKrwPerUnit IS NOT NULL
+                    AND item.actualRateDate IS NOT NULL
+                    AND item.actualConvertedKrwAmount IS NOT NULL
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                UPDATE itinerary_items SET
+                    actualAmount = NULL,
+                    actualCurrencyCode = NULL,
+                    actualKrwPerUnit = NULL,
+                    actualRateDate = NULL,
+                    actualConvertedKrwAmount = NULL
+                """.trimIndent()
+            )
+        }
+    }
+
     val All = arrayOf(
         Migration1To2,
         Migration2To3,
         Migration3To4,
         Migration4To5,
         Migration5To6,
+        Migration6To7,
+        Migration7To8,
+        Migration8To9,
+        Migration9To10,
     )
+
+    private fun SupportSQLiteDatabase.hasColumn(tableName: String, columnName: String): Boolean =
+        query("PRAGMA table_info(`$tableName`)").use { cursor ->
+            val nameIndex = cursor.getColumnIndexOrThrow("name")
+            while (cursor.moveToNext()) {
+                if (cursor.getString(nameIndex) == columnName) return@use true
+            }
+            false
+        }
 }

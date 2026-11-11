@@ -3,6 +3,7 @@ package com.example.tripplan.presentation.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.tripplan.domain.model.TripPlanInput
+import com.example.tripplan.domain.model.CountryCurrencyCatalog
 import com.example.tripplan.domain.rule.TripPlanValidationError
 import com.example.tripplan.domain.usecase.DeleteTripPlanResult
 import com.example.tripplan.domain.usecase.DeleteTripPlanUseCase
@@ -53,6 +54,10 @@ class EditTripViewModel @Inject constructor(
                         startDate = trip.startDate,
                         endDate = trip.endDate,
                         description = trip.description,
+                        countryCode = trip.countryCode,
+                        countryName = CountryCurrencyCatalog.find(trip.countryCode)?.countryName
+                            ?: trip.countryCode,
+                        currencyCode = trip.currencyCode,
                     )
                 }
             } catch (error: CancellationException) {
@@ -65,16 +70,48 @@ class EditTripViewModel @Inject constructor(
 
     fun onTitleChange(value: String) = updateInput { copy(title = value, isTitleError = false) }
     fun onDestinationChange(value: String) = updateInput { copy(destination = value) }
+    fun onCountrySelected(countryCode: String) {
+        val country = CountryCurrencyCatalog.find(countryCode) ?: return
+        updateInput {
+            copy(
+                countryCode = country.countryCode,
+                countryName = country.countryName,
+                currencyCode = country.currencyCode,
+            )
+        }
+    }
     fun onDateRangeChange(startDate: LocalDate?, endDate: LocalDate?) = updateInput {
         copy(startDate = startDate, endDate = endDate, dateError = null)
     }
     fun onDescriptionChange(value: String) = updateInput { copy(description = value) }
 
-    fun onSaveClick() = save(deleteOutOfRangeItems = false, clearCompletion = false)
+    fun onSaveClick() = save(
+        deleteOutOfRangeItems = false,
+        clearCompletion = false,
+        resetBudgetForCurrencyChange = false,
+    )
+
+    fun onBudgetResetConfirm() {
+        val clearCompletion = _uiState.value.clearCompletionAfterBudgetConfirmation
+        _uiState.update { it.copy(isBudgetResetConfirmationVisible = false) }
+        save(
+            deleteOutOfRangeItems = false,
+            clearCompletion = clearCompletion,
+            resetBudgetForCurrencyChange = true,
+        )
+    }
+
+    fun onBudgetResetDismiss() = _uiState.update {
+        it.copy(isBudgetResetConfirmationVisible = false)
+    }
 
     fun onCompletionResetConfirm() {
         _uiState.update { it.copy(isCompletionResetConfirmationVisible = false) }
-        save(deleteOutOfRangeItems = false, clearCompletion = true)
+        save(
+            deleteOutOfRangeItems = false,
+            clearCompletion = true,
+            resetBudgetForCurrencyChange = _uiState.value.resetBudgetAfterCompletionConfirmation,
+        )
     }
 
     fun onCompletionResetDismiss() = _uiState.update {
@@ -86,6 +123,7 @@ class EditTripViewModel @Inject constructor(
         save(
             deleteOutOfRangeItems = true,
             clearCompletion = _uiState.value.clearCompletionAfterRangeConfirmation,
+            resetBudgetForCurrencyChange = _uiState.value.resetBudgetAfterRangeConfirmation,
         )
     }
 
@@ -120,6 +158,7 @@ class EditTripViewModel @Inject constructor(
     private fun save(
         deleteOutOfRangeItems: Boolean,
         clearCompletion: Boolean,
+        resetBudgetForCurrencyChange: Boolean,
     ) {
         val state = _uiState.value
         if (state.isSaving) return
@@ -148,9 +187,12 @@ class EditTripViewModel @Inject constructor(
                         startDate = checkNotNull(startDate),
                         endDate = checkNotNull(endDate),
                         description = state.description,
+                        countryCode = state.countryCode,
+                        currencyCode = state.currencyCode,
                     ),
                     deleteOutOfRangeItems = deleteOutOfRangeItems,
                     clearCompletion = clearCompletion,
+                    resetBudgetForCurrencyChange = resetBudgetForCurrencyChange,
                 )
                 when (result) {
                     is UpdateTripPlanResult.Success -> {
@@ -171,12 +213,21 @@ class EditTripViewModel @Inject constructor(
                             isSaving = false,
                             outOfRangeItemCount = result.itemCount,
                             clearCompletionAfterRangeConfirmation = clearCompletion,
+                            resetBudgetAfterRangeConfirmation = resetBudgetForCurrencyChange,
                         )
                     }
                     UpdateTripPlanResult.RequiresCompletionResetConfirmation -> _uiState.update {
                         it.copy(
                             isSaving = false,
                             isCompletionResetConfirmationVisible = true,
+                            resetBudgetAfterCompletionConfirmation = resetBudgetForCurrencyChange,
+                        )
+                    }
+                    UpdateTripPlanResult.RequiresBudgetResetConfirmation -> _uiState.update {
+                        it.copy(
+                            isSaving = false,
+                            isBudgetResetConfirmationVisible = true,
+                            clearCompletionAfterBudgetConfirmation = clearCompletion,
                         )
                     }
                     UpdateTripPlanResult.NotFound -> _uiState.update {
@@ -206,6 +257,9 @@ data class EditTripUiState(
     val startDate: LocalDate? = null,
     val endDate: LocalDate? = null,
     val description: String = "",
+    val countryCode: String = "KR",
+    val countryName: String = "대한민국",
+    val currencyCode: String = "KRW",
     val isTitleError: Boolean = false,
     val dateError: EditTripDateError? = null,
     val isSaving: Boolean = false,
@@ -213,6 +267,10 @@ data class EditTripUiState(
     val outOfRangeItemCount: Int? = null,
     val isCompletionResetConfirmationVisible: Boolean = false,
     val clearCompletionAfterRangeConfirmation: Boolean = false,
+    val resetBudgetAfterRangeConfirmation: Boolean = false,
+    val resetBudgetAfterCompletionConfirmation: Boolean = false,
+    val isBudgetResetConfirmationVisible: Boolean = false,
+    val clearCompletionAfterBudgetConfirmation: Boolean = false,
     val isDeleteConfirmationVisible: Boolean = false,
 )
 

@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -22,9 +23,11 @@ class CreateTripScreenTest {
         }
 
         composeRule.onNodeWithText("여행 이름").assertIsDisplayed()
+        composeRule.onNodeWithText("대한민국").assertIsDisplayed()
+        composeRule.onNodeWithText("KRW · 대한민국 원").assertIsDisplayed()
         composeRule.onNodeWithText("여행 지역").assertIsDisplayed()
         composeRule.onNodeWithText("여행 날짜").assertIsDisplayed()
-        composeRule.onNodeWithText("여행 만들기").assertIsDisplayed()
+        composeRule.onNodeWithText("여행 만들기").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -43,7 +46,8 @@ class CreateTripScreenTest {
 
         composeRule.onNodeWithText("여행 이름을 입력해 주세요.").assertIsDisplayed()
         composeRule.onNodeWithText("여행 날짜를 선택해 주세요.").assertIsDisplayed()
-        composeRule.onNodeWithText("여행을 저장하지 못했습니다. 다시 시도해 주세요.").assertIsDisplayed()
+        composeRule.onNodeWithText("여행을 저장하지 못했습니다. 다시 시도해 주세요.")
+            .performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -58,7 +62,7 @@ class CreateTripScreenTest {
             }
         }
 
-        composeRule.onNodeWithText("여행 만들기").performClick()
+        composeRule.onNodeWithText("여행 만들기").performScrollTo().performClick()
 
         composeRule.runOnIdle {
             assertTrue(wasClicked)

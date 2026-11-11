@@ -7,6 +7,7 @@ import com.example.tripplan.domain.usecase.ObserveTripPlanDetailsUseCase
 import com.example.tripplan.domain.usecase.UpdateTripPlanUseCase
 import com.example.tripplan.testutil.FakeItineraryRepository
 import com.example.tripplan.testutil.FakeTripPlanRepository
+import com.example.tripplan.testutil.FakeTripBudgetRepository
 import com.example.tripplan.testutil.MainDispatcherRule
 import java.time.Clock
 import java.time.Instant
@@ -136,7 +137,12 @@ class EditTripViewModelTest {
         items: FakeItineraryRepository = FakeItineraryRepository(),
     ) = EditTripViewModel(
         observeTripPlanDetails = ObserveTripPlanDetailsUseCase(trips, items),
-        updateTripPlan = UpdateTripPlanUseCase(trips, items, fixedClock),
+        updateTripPlan = UpdateTripPlanUseCase(
+            trips,
+            items,
+            fixedClock,
+            FakeTripBudgetRepository(),
+        ),
         deleteTripPlan = DeleteTripPlanUseCase(trips),
     )
 

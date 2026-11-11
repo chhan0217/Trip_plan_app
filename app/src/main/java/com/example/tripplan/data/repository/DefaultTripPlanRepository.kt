@@ -30,6 +30,9 @@ class DefaultTripPlanRepository @Inject constructor(
         return tripPlanDao.getTripPlan(tripPlanId)?.toDomain()
     }
 
+    override suspend fun hasExpenses(tripPlanId: Long): Boolean =
+        tripPlanDao.hasExpenses(tripPlanId)
+
     override suspend fun createTripPlan(input: TripPlanInput): Long {
         val now = clock.instant().toEpochMilli()
         return tripPlanDao.insertTripPlan(
@@ -41,6 +44,8 @@ class DefaultTripPlanRepository @Inject constructor(
                 description = input.description.trim(),
                 createdAt = now,
                 updatedAt = now,
+                countryCode = input.countryCode,
+                currencyCode = input.currencyCode,
             )
         )
     }
@@ -64,6 +69,13 @@ class DefaultTripPlanRepository @Inject constructor(
         itemIds: List<Long>,
     ) {
         tripPlanDao.updateTripPlanAndDeleteItineraryItems(tripPlan.toEntity(), itemIds)
+    }
+
+    override suspend fun updateTripPlanAndResetBudget(
+        tripPlan: TripPlan,
+        itemIds: List<Long>,
+    ) {
+        tripPlanDao.updateTripPlanAndResetBudget(tripPlan.toEntity(), itemIds)
     }
 
     override suspend fun deleteTripPlan(tripPlanId: Long) {

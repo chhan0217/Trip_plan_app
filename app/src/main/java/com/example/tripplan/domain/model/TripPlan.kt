@@ -13,4 +13,6 @@ data class TripPlan(
     val createdAt: Instant,
     val updatedAt: Instant,
     val completedAt: Instant? = null,
+    val countryCode: String = "KR",
+    val currencyCode: String = "KRW",
 )

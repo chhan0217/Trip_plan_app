@@ -27,10 +27,19 @@ class DefaultTripCopyRepository @Inject constructor(
                     startDate = input.startDate.toString(), endDate = input.endDate.toString(),
                     description = input.description.trim(), createdAt = now, updatedAt = now,
                     completedAt = null,
+                    countryCode = input.countryCode,
+                    currencyCode = input.currencyCode,
                 )
             )
             itineraryItems.forEach { item ->
-                itineraryDao.insertItem(item.copy(id = 0, tripPlanId = tripId).toEntity())
+                itineraryDao.insertItem(
+                    item.copy(
+                        id = 0,
+                        tripPlanId = tripId,
+                        estimatedCost = null,
+                        actualCost = null,
+                    ).toEntity()
+                )
             }
             tripId
         }

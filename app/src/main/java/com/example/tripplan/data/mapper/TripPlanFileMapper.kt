@@ -41,6 +41,8 @@ object TripPlanFileMapper {
         description = dto.description.trim(),
         createdAt = now,
         updatedAt = now,
+        countryCode = dto.countryCode,
+        currencyCode = dto.currencyCode,
     )
 
     fun toItineraryEntity(dto: SharedItineraryItemDto, tripPlanId: Long) =

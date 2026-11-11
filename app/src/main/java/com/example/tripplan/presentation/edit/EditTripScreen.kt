@@ -43,6 +43,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.tripplan.R
+import com.example.tripplan.presentation.common.CountrySelector
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -73,11 +74,14 @@ fun EditTripScreen(
         onBackClick = onBackClick,
         onTitleChange = viewModel::onTitleChange,
         onDestinationChange = viewModel::onDestinationChange,
+        onCountrySelected = { viewModel.onCountrySelected(it.countryCode) },
         onDateRangeChange = viewModel::onDateRangeChange,
         onDescriptionChange = viewModel::onDescriptionChange,
         onSaveClick = viewModel::onSaveClick,
         onCompletionResetConfirm = viewModel::onCompletionResetConfirm,
         onCompletionResetDismiss = viewModel::onCompletionResetDismiss,
+        onBudgetResetConfirm = viewModel::onBudgetResetConfirm,
+        onBudgetResetDismiss = viewModel::onBudgetResetDismiss,
         onOutOfRangeConfirm = viewModel::onOutOfRangeConfirm,
         onOutOfRangeDismiss = viewModel::onOutOfRangeDismiss,
         onDeleteRequest = viewModel::onDeleteRequest,
@@ -93,11 +97,14 @@ internal fun EditTripScreenContent(
     onBackClick: () -> Unit = {},
     onTitleChange: (String) -> Unit = {},
     onDestinationChange: (String) -> Unit = {},
+    onCountrySelected: (com.example.tripplan.domain.model.TravelCountry) -> Unit = {},
     onDateRangeChange: (LocalDate?, LocalDate?) -> Unit = { _, _ -> },
     onDescriptionChange: (String) -> Unit = {},
     onSaveClick: () -> Unit = {},
     onCompletionResetConfirm: () -> Unit = {},
     onCompletionResetDismiss: () -> Unit = {},
+    onBudgetResetConfirm: () -> Unit = {},
+    onBudgetResetDismiss: () -> Unit = {},
     onOutOfRangeConfirm: () -> Unit = {},
     onOutOfRangeDismiss: () -> Unit = {},
     onDeleteRequest: () -> Unit = {},
@@ -132,6 +139,11 @@ internal fun EditTripScreenContent(
                         } else null,
                         isError = uiState.isTitleError,
                         singleLine = true,
+                    )
+                    CountrySelector(
+                        countryCode = uiState.countryCode,
+                        currencyCode = uiState.currencyCode,
+                        onCountrySelected = onCountrySelected,
                     )
                     OutlinedTextField(
                         value = uiState.destination,
@@ -218,6 +230,21 @@ internal fun EditTripScreenContent(
             text = { Text("완료한 여행의 날짜를 현재 또는 미래로 변경하면 완료 상태가 해제됩니다. 계속할까요?") },
             confirmButton = { TextButton(onClick = onCompletionResetConfirm) { Text("해제 후 변경") } },
             dismissButton = { TextButton(onClick = onCompletionResetDismiss) { Text("취소") } },
+        )
+    }
+    if (uiState.isBudgetResetConfirmationVisible) {
+        AlertDialog(
+            onDismissRequest = onBudgetResetDismiss,
+            title = { Text("여행 국가와 통화 변경") },
+            text = {
+                Text(
+                    "국가를 변경하면 기존 여행 예산, 일정 비용과 지출 기록이 초기화됩니다. 계속할까요?"
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = onBudgetResetConfirm) { Text("초기화 후 변경") }
+            },
+            dismissButton = { TextButton(onClick = onBudgetResetDismiss) { Text("취소") } },
         )
     }
     if (uiState.isDeleteConfirmationVisible) {

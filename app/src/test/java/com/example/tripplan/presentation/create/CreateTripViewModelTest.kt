@@ -68,6 +68,7 @@ class CreateTripViewModelTest {
         }
         viewModel.onTripTitleChange("제주 여행")
         viewModel.onTripPlaceChange("제주")
+        viewModel.onCountrySelected("JP")
         viewModel.onTripDateRangeChange(
             startDate = LocalDate.of(2026, 11, 9),
             endDate = LocalDate.of(2026, 11, 11),
@@ -81,6 +82,8 @@ class CreateTripViewModelTest {
         assertEquals(1, repository.createdInputs.size)
         assertEquals("제주 여행", repository.createdInputs.single().title)
         assertEquals("제주", repository.createdInputs.single().destination)
+        assertEquals("JP", repository.createdInputs.single().countryCode)
+        assertEquals("JPY", repository.createdInputs.single().currencyCode)
         assertFalse(viewModel.uiState.value.isSaving)
         assertFalse(viewModel.uiState.value.isSaveFailed)
     }

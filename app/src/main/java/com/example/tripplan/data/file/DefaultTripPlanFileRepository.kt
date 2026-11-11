@@ -12,6 +12,7 @@ import com.example.tripplan.data.local.PlaceDao
 import com.example.tripplan.data.local.PlaceEntity
 import com.example.tripplan.data.mapper.TripPlanFileMapper
 import com.example.tripplan.domain.model.ExportedTripPlanFile
+import com.example.tripplan.domain.model.CountryCurrencyCatalog
 import com.example.tripplan.domain.model.TripPlanFileFailure
 import com.example.tripplan.domain.model.TripPlanFileResult
 import com.example.tripplan.domain.model.TripPlanImportPreview
@@ -22,6 +23,7 @@ import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.temporal.ChronoUnit
+import java.util.Currency
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -57,7 +59,15 @@ class DefaultTripPlanFileRepository @Inject constructor(
             .filter { it.type == "Shared" }
         val dto = TripPlanFileV2Dto(
             formatVersion = TRIP_PLAN_FILE_VERSION_2,
-            trip = SharedTripDto(trip.title, trip.destination, trip.startDate, trip.endDate, trip.description),
+            trip = SharedTripDto(
+                title = trip.title,
+                destination = trip.destination,
+                startDate = trip.startDate,
+                endDate = trip.endDate,
+                description = trip.description,
+                countryCode = trip.countryCode,
+                currencyCode = trip.currencyCode,
+            ),
             itineraryItems = items.map { item ->
                 val place = item.placeId?.let { placeDao.getPlace(it) }
                 SharedItineraryItemV2Dto(
@@ -215,7 +225,9 @@ class DefaultTripPlanFileRepository @Inject constructor(
                 (startTime == null || endTime == null || !endTime.isBefore(startTime))
         }
         val validPacking = decoded.sharedPackingItems.all { it.name.isNotBlank() && it.quantity > 0 && it.order >= 0 }
-        return if (validItems && validPacking) TripPlanFileResult.Success(decoded)
+        val validCountryAndCurrency = CountryCurrencyCatalog.find(decoded.trip.countryCode) != null &&
+            runCatching { Currency.getInstance(decoded.trip.currencyCode) }.isSuccess
+        return if (validItems && validPacking && validCountryAndCurrency) TripPlanFileResult.Success(decoded)
         else TripPlanFileResult.Failure(TripPlanFileFailure.InvalidData)
     }
 

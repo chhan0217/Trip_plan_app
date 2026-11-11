@@ -274,6 +274,285 @@ class TripPlanDatabaseMigrationTest {
         database.close()
     }
 
+    @Test
+    @Throws(IOException::class)
+    fun migrate6To7_preservesExistingDataAndCreatesBudgetStorage() {
+        helper.createDatabase(TEST_DATABASE_FROM_V6, 6).apply {
+            execSQL(
+                """
+                INSERT INTO trip_plans (
+                    id, title, destination, startDate, endDate, description,
+                    createdAt, updatedAt, completedAt
+                ) VALUES (
+                    14, '일본 여행', '도쿄', '2026-12-10', '2026-12-14', '', 1, 2, NULL
+                )
+                """.trimIndent()
+            )
+            execSQL(
+                """
+                INSERT INTO exchange_rates (
+                    currencyCode, currencyName, krwPerUnit, rateDate, fetchedAt
+                ) VALUES (
+                    'JPY', '일본 엔', '9.52', '2026-11-11', 200
+                )
+                """.trimIndent()
+            )
+            close()
+        }
+
+        val database = helper.runMigrationsAndValidate(
+            TEST_DATABASE_FROM_V6,
+            7,
+            true,
+            DatabaseMigrations.Migration6To7,
+        )
+        database.setForeignKeyConstraintsEnabled(true)
+
+        database.query("SELECT title FROM trip_plans WHERE id = 14").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals("일본 여행", cursor.getString(0))
+        }
+        database.query("SELECT countryCode, currencyCode FROM trip_plans WHERE id = 14").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals("KR", cursor.getString(0))
+            assertEquals("KRW", cursor.getString(1))
+        }
+        database.query("SELECT krwPerUnit FROM exchange_rates WHERE currencyCode = 'JPY'").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals("9.52", cursor.getString(0))
+        }
+        database.query(
+            "SELECT estimatedAmount, actualAmount FROM itinerary_items WHERE tripPlanId = 14"
+        ).use { cursor ->
+            assertEquals(false, cursor.moveToFirst())
+        }
+        insertItineraryItem(database, tripPlanId = 14)
+        database.query(
+            "SELECT estimatedAmount, actualAmount FROM itinerary_items WHERE tripPlanId = 14"
+        ).use { cursor ->
+            cursor.moveToFirst()
+            assertEquals(true, cursor.isNull(0))
+            assertEquals(true, cursor.isNull(1))
+        }
+        database.execSQL(
+            """
+            UPDATE itinerary_items SET
+                estimatedAmount = '15000', estimatedCurrencyCode = 'JPY',
+                estimatedKrwPerUnit = '9.52', estimatedRateDate = '2026-11-11',
+                estimatedConvertedKrwAmount = '142800', actualAmount = '18000',
+                actualCurrencyCode = 'JPY', actualKrwPerUnit = '9.70',
+                actualRateDate = '2026-11-11', actualConvertedKrwAmount = '174600'
+            WHERE tripPlanId = 14
+            """.trimIndent()
+        )
+        database.query(
+            "SELECT actualConvertedKrwAmount FROM itinerary_items WHERE tripPlanId = 14"
+        ).use { cursor ->
+            cursor.moveToFirst()
+            assertEquals("174600", cursor.getString(0))
+        }
+        insertBudget(database, tripPlanId = 14)
+        database.execSQL("DELETE FROM trip_plans WHERE id = 14")
+        database.query("SELECT COUNT(*) FROM trip_budgets").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals(0, cursor.getInt(0))
+        }
+        database.query("SELECT COUNT(*) FROM budget_entries").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals(0, cursor.getInt(0))
+        }
+        database.close()
+    }
+
+    @Test
+    @Throws(IOException::class)
+    fun migrate7To8_preservesCountryCurrencyAndBudgetData() {
+        helper.createDatabase(TEST_DATABASE_FROM_V7, 7).apply {
+            execSQL(
+                """
+                INSERT INTO trip_plans (
+                    id, title, destination, startDate, endDate, description,
+                    createdAt, updatedAt, completedAt, countryCode, currencyCode
+                ) VALUES (
+                    15, '일본 여행', '도쿄', '2026-12-10', '2026-12-14', '',
+                    1, 2, NULL, 'JP', 'JPY'
+                )
+                """.trimIndent()
+            )
+            insertBudget(this, tripPlanId = 15)
+            close()
+        }
+
+        val database = helper.runMigrationsAndValidate(
+            TEST_DATABASE_FROM_V7,
+            8,
+            true,
+            DatabaseMigrations.Migration7To8,
+        )
+
+        database.query("SELECT countryCode, currencyCode FROM trip_plans WHERE id = 15").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals("JP", cursor.getString(0))
+            assertEquals("JPY", cursor.getString(1))
+        }
+        database.query("SELECT COUNT(*) FROM budget_entries WHERE tripPlanId = 15").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals(1, cursor.getInt(0))
+        }
+        database.close()
+    }
+
+    @Test
+    @Throws(IOException::class)
+    fun migrate8To9_createsExpenseTimelineAndKeepsExpenseWhenScheduleIsDeleted() {
+        helper.createDatabase(TEST_DATABASE_FROM_V8, 8).apply {
+            execSQL(
+                """
+                INSERT INTO trip_plans (
+                    id, title, destination, startDate, endDate, description,
+                    createdAt, updatedAt, completedAt, countryCode, currencyCode
+                ) VALUES (
+                    16, '도쿄 여행', '도쿄', '2026-11-11', '2026-11-13', '',
+                    1, 1, NULL, 'JP', 'JPY'
+                )
+                """.trimIndent()
+            )
+            execSQL(
+                """
+                INSERT INTO itinerary_items (
+                    id, tripPlanId, date, title, place, startTime, endTime, note, sortOrder, placeId,
+                    estimatedAmount, estimatedCurrencyCode, estimatedKrwPerUnit, estimatedRateDate,
+                    estimatedConvertedKrwAmount, actualAmount, actualCurrencyCode, actualKrwPerUnit,
+                    actualRateDate, actualConvertedKrwAmount
+                ) VALUES (
+                    30, 16, '2026-11-11', '점심', '긴자', '12:00', '13:00', '', 0, NULL,
+                    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+                )
+                """.trimIndent()
+            )
+            close()
+        }
+
+        val database = helper.runMigrationsAndValidate(
+            TEST_DATABASE_FROM_V8,
+            9,
+            true,
+            DatabaseMigrations.Migration8To9,
+        )
+        database.setForeignKeyConstraintsEnabled(true)
+        database.execSQL(
+            """
+            INSERT INTO expenses (
+                tripPlanId, itineraryItemId, occurredDate, occurredTimeMinutes,
+                amount, currencyCode, krwPerUnit, rateDate, convertedKrwAmount, category, createdAt
+            ) VALUES (
+                16, 30, '2026-11-11', 750, '2500', 'JPY', '9.52',
+                '2026-11-10', '23800', 'Food', 100
+            )
+            """.trimIndent()
+        )
+        database.execSQL("DELETE FROM itinerary_items WHERE id = 30")
+        database.query("SELECT itineraryItemId, category FROM expenses").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals(true, cursor.isNull(0))
+            assertEquals("Food", cursor.getString(1))
+        }
+        database.execSQL("DELETE FROM trip_plans WHERE id = 16")
+        database.query("SELECT COUNT(*) FROM expenses").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals(0, cursor.getInt(0))
+        }
+        database.close()
+    }
+
+    @Test
+    @Throws(IOException::class)
+    fun migrate9To10_movesLegacyActualCostIntoOtherExpense() {
+        helper.createDatabase(TEST_DATABASE_FROM_V9, 9).apply {
+            execSQL(
+                """
+                INSERT INTO trip_plans (
+                    id, title, destination, startDate, endDate, description,
+                    createdAt, updatedAt, completedAt, countryCode, currencyCode
+                ) VALUES (
+                    17, '기존 비용 여행', '도쿄', '2026-11-11', '2026-11-12', '',
+                    1, 200, NULL, 'JP', 'JPY'
+                )
+                """.trimIndent()
+            )
+            execSQL(
+                """
+                INSERT INTO exchange_rates (
+                    currencyCode, currencyName, krwPerUnit, rateDate, fetchedAt
+                ) VALUES ('JPY', '일본 엔', '9.52', '2026-11-10', 100)
+                """.trimIndent()
+            )
+            execSQL(
+                """
+                INSERT INTO itinerary_items (
+                    id, tripPlanId, date, title, place, startTime, endTime, note, sortOrder, placeId,
+                    estimatedAmount, estimatedCurrencyCode, estimatedKrwPerUnit, estimatedRateDate,
+                    estimatedConvertedKrwAmount, actualAmount, actualCurrencyCode, actualKrwPerUnit,
+                    actualRateDate, actualConvertedKrwAmount
+                ) VALUES (
+                    31, 17, '2026-11-11', '점심', '긴자', '09:30', '10:30', '', 0, NULL,
+                    NULL, NULL, NULL, NULL, NULL,
+                    '23800', 'KRW', '1', '2026-11-11', '23800'
+                )
+                """.trimIndent()
+            )
+            close()
+        }
+
+        val database = helper.runMigrationsAndValidate(
+            TEST_DATABASE_FROM_V9,
+            10,
+            true,
+            DatabaseMigrations.Migration9To10,
+        )
+        database.query(
+            """
+            SELECT itineraryItemId, occurredTimeMinutes, amount, currencyCode,
+                krwPerUnit, convertedKrwAmount, category
+            FROM expenses WHERE tripPlanId = 17
+            """.trimIndent()
+        ).use { cursor ->
+            cursor.moveToFirst()
+            assertEquals(31L, cursor.getLong(0))
+            assertEquals(570, cursor.getInt(1))
+            assertEquals("23800", cursor.getString(2))
+            assertEquals("KRW", cursor.getString(3))
+            assertEquals("9.52", cursor.getString(4))
+            assertEquals("23800", cursor.getString(5))
+            assertEquals("Other", cursor.getString(6))
+        }
+        database.query("SELECT actualAmount FROM itinerary_items WHERE id = 31").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals(true, cursor.isNull(0))
+        }
+        database.close()
+    }
+
+    private fun insertBudget(database: SupportSQLiteDatabase, tripPlanId: Long) {
+        database.execSQL(
+            """
+            INSERT INTO trip_budgets (tripPlanId, currencyCode, createdAt, updatedAt)
+            VALUES ($tripPlanId, 'JPY', 100, 100)
+            """.trimIndent()
+        )
+        database.execSQL(
+            """
+            INSERT INTO budget_entries (
+                tripPlanId, type, amount, krwPerUnit, rateDate,
+                convertedKrwAmount, memo, sortOrder, createdAt, updatedAt
+            ) VALUES (
+                $tripPlanId, 'Initial', '300000', '9.52', '2026-11-11',
+                '2856000', '', 0, 100, 100
+            )
+            """.trimIndent()
+        )
+    }
+
     private fun insertPlaceAndLinkItinerary(
         database: SupportSQLiteDatabase,
         tripPlanId: Long,
@@ -325,5 +604,9 @@ class TripPlanDatabaseMigrationTest {
         const val TEST_DATABASE_FROM_V1_TO_V4 = "migration-test-from-v1-to-v4"
         const val TEST_DATABASE_FROM_V4 = "migration-test-from-v4"
         const val TEST_DATABASE_FROM_V5 = "migration-test-from-v5"
+        const val TEST_DATABASE_FROM_V6 = "migration-test-from-v6"
+        const val TEST_DATABASE_FROM_V7 = "migration-test-from-v7"
+        const val TEST_DATABASE_FROM_V8 = "migration-test-from-v8"
+        const val TEST_DATABASE_FROM_V9 = "migration-test-from-v9"
     }
 }
