@@ -37,3 +37,6 @@ data class ItineraryEditorRoute(
     val itemId: Long? = null,
     val initialDate: String? = null,
 ) : NavKey
+
+@Serializable
+data class ItineraryMapRoute(val tripPlanId: Long) : NavKey

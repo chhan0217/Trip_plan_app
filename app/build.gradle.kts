@@ -82,6 +82,7 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.google.places)
+    implementation(libs.maps.compose)
 
     kapt(libs.androidx.room.compiler)
     kapt(libs.hilt.compiler)

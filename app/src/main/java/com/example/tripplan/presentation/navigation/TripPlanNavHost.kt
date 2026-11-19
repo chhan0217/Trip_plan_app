@@ -10,6 +10,7 @@ import com.example.tripplan.presentation.detail.TripDetailScreen
 import com.example.tripplan.presentation.edit.EditTripScreen
 import com.example.tripplan.presentation.home.HomeScreen
 import com.example.tripplan.presentation.itinerary.ItineraryEditorScreen
+import com.example.tripplan.presentation.itinerarymap.ItineraryMapScreen
 import com.example.tripplan.presentation.file.TripPlanExportScreen
 import com.example.tripplan.presentation.file.TripPlanImportScreen
 import com.example.tripplan.presentation.packing.PackingScreen
@@ -86,6 +87,7 @@ fun TripPlanNavHost(initialImportUri: String? = null) {
                     onPackingClick = { backStack.add(PackingRoute(route.tripPlanId)) },
                     onCopyTrip = { backStack.add(TripCopyRoute(route.tripPlanId)) },
                     onPlacesClick = { backStack.add(PlaceRoute) },
+                    onItineraryMapClick = { backStack.add(ItineraryMapRoute(route.tripPlanId)) },
                 )
             }
             entry<TripPlanExportRoute> { route ->
@@ -137,6 +139,15 @@ fun TripPlanNavHost(initialImportUri: String? = null) {
                     initialDate = route.initialDate?.let(LocalDate::parse),
                     onBackClick = { backStack.removeLastOrNull() },
                     onCompleted = { backStack.removeLastOrNull() },
+                )
+            }
+            entry<ItineraryMapRoute> { route ->
+                ItineraryMapScreen(
+                    tripPlanId = route.tripPlanId,
+                    onBackClick = { backStack.removeLastOrNull() },
+                    onEditItinerary = { itemId ->
+                        backStack.add(ItineraryEditorRoute(route.tripPlanId, itemId = itemId))
+                    },
                 )
             }
         }

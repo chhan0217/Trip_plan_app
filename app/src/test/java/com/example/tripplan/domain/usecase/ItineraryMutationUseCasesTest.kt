@@ -34,6 +34,7 @@ class ItineraryMutationUseCasesTest {
         assertEquals("새 일정", created?.title)
         assertEquals("제주", created?.place)
         assertEquals(1, created?.order)
+        assertEquals(55L, created?.placeId)
     }
 
     @Test
@@ -87,13 +88,17 @@ class ItineraryMutationUseCasesTest {
             )
         }
 
-        UpdateItineraryItemUseCase(trips, items)(2L, input(secondDate).copy(title = "이동"))
+        UpdateItineraryItemUseCase(trips, items)(
+            2L,
+            input(secondDate).copy(title = "이동", placeId = 55L),
+        )
 
         val saved = items.observeItems(sampleTrip.id).first()
         assertEquals(0, saved.first { it.id == 1L }.order)
         assertEquals(0, saved.first { it.id == 3L }.order)
         assertEquals(1, saved.first { it.id == 2L }.order)
         assertEquals(secondDate, saved.first { it.id == 2L }.date)
+        assertEquals(55L, saved.first { it.id == 2L }.placeId)
     }
 
     @Test
@@ -146,6 +151,7 @@ class ItineraryMutationUseCasesTest {
         date = date,
         title = "일정",
         place = "장소",
+        placeId = 55L,
     )
 
     private fun item(id: Long, date: LocalDate, order: Int) = ItineraryItem(

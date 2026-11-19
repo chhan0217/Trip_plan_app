@@ -82,6 +82,7 @@ fun TripDetailScreen(
     onPackingClick: () -> Unit = {},
     onCopyTrip: () -> Unit = {},
     onPlacesClick: () -> Unit = {},
+    onItineraryMapClick: () -> Unit = {},
     viewModel: TripDetailViewModel = hiltViewModel(key = "trip-detail-$tripPlanId"),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -99,6 +100,7 @@ fun TripDetailScreen(
         onPackingClick = onPackingClick,
         onCopyTrip = onCopyTrip,
         onPlacesClick = onPlacesClick,
+        onItineraryMapClick = onItineraryMapClick,
         onMoveUp = viewModel::onMoveUp,
         onMoveDown = viewModel::onMoveDown,
         onCompletionRequest = viewModel::onCompletionRequest,
@@ -134,6 +136,7 @@ internal fun TripDetailScreenContent(
     onPackingClick: () -> Unit = {},
     onCopyTrip: () -> Unit = {},
     onPlacesClick: () -> Unit = {},
+    onItineraryMapClick: () -> Unit = {},
     onMoveUp: (Long) -> Unit = {},
     onMoveDown: (Long) -> Unit = {},
     onCompletionRequest: () -> Unit = {},
@@ -187,6 +190,7 @@ internal fun TripDetailScreenContent(
                     onPackingClick = onPackingClick,
                     onCopyTrip = onCopyTrip,
                     onPlacesClick = onPlacesClick,
+                    onItineraryMapClick = onItineraryMapClick,
                     onCreateBudget = onCreateBudget,
                     onAddBudget = onAddBudget,
                     onSaveEstimatedCost = onSaveEstimatedCost,
@@ -292,6 +296,7 @@ private fun DetailContent(
     onPackingClick: () -> Unit,
     onCopyTrip: () -> Unit,
     onPlacesClick: () -> Unit,
+    onItineraryMapClick: () -> Unit,
     onCreateBudget: (String) -> Unit,
     onAddBudget: (String) -> Unit,
     onSaveEstimatedCost: (Long, String, String, String) -> Unit,
@@ -394,6 +399,12 @@ private fun DetailContent(
                     )
                 }
             }
+        }
+        item {
+            OutlinedButton(
+                onClick = onItineraryMapClick,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+            ) { Text("일정 지도에서 보기") }
         }
         item {
             OutlinedCard(

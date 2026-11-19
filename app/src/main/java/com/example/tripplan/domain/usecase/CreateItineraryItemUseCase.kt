@@ -38,6 +38,7 @@ class CreateItineraryItemUseCase @Inject constructor(
                 endTime = input.endTime,
                 note = input.note.trim(),
                 order = nextOrder,
+                placeId = input.placeId,
             )
         )
         val normalized = ItineraryTimeOrderNormalizer.normalize(

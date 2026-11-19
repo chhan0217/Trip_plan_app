@@ -37,6 +37,7 @@ class UpdateItineraryItemUseCase @Inject constructor(
             endTime = input.endTime,
             note = input.note.trim(),
             order = newOrder,
+            placeId = input.placeId,
         )
         val replacedItems = allItems.map { if (it.id == itemId) updated else it }
         val affectedDates = setOf(existing.date, updated.date)
