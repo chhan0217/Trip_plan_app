@@ -23,9 +23,10 @@ class CreateTripScreenTest {
         }
 
         composeRule.onNodeWithText("여행 이름").assertIsDisplayed()
-        composeRule.onNodeWithText("대한민국").assertIsDisplayed()
+        composeRule.onNodeWithText("KR · 대한민국").assertIsDisplayed()
         composeRule.onNodeWithText("KRW · 대한민국 원").assertIsDisplayed()
-        composeRule.onNodeWithText("여행 지역").assertIsDisplayed()
+        composeRule.onNodeWithText("여행 도시").assertIsDisplayed()
+        composeRule.onNodeWithText("추천 도시").assertIsDisplayed()
         composeRule.onNodeWithText("여행 날짜").assertIsDisplayed()
         composeRule.onNodeWithText("여행 만들기").performScrollTo().assertIsDisplayed()
     }

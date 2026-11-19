@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.tripplan.R
 import com.example.tripplan.presentation.common.CountrySelector
+import com.example.tripplan.presentation.common.TravelCitySuggestions
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -129,6 +130,11 @@ internal fun EditTripScreenContent(
                         .padding(horizontal = 20.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
+                    CountrySelector(
+                        countryCode = uiState.countryCode,
+                        currencyCode = uiState.currencyCode,
+                        onCountrySelected = onCountrySelected,
+                    )
                     OutlinedTextField(
                         value = uiState.title,
                         onValueChange = onTitleChange,
@@ -140,17 +146,17 @@ internal fun EditTripScreenContent(
                         isError = uiState.isTitleError,
                         singleLine = true,
                     )
-                    CountrySelector(
-                        countryCode = uiState.countryCode,
-                        currencyCode = uiState.currencyCode,
-                        onCountrySelected = onCountrySelected,
-                    )
                     OutlinedTextField(
                         value = uiState.destination,
                         onValueChange = onDestinationChange,
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("여행 지역") },
+                        label = { Text("여행 도시") },
+                        placeholder = { Text("도시를 직접 입력하거나 아래에서 선택하세요.") },
                         singleLine = true,
+                    )
+                    TravelCitySuggestions(
+                        countryCode = uiState.countryCode,
+                        onCitySelected = onDestinationChange,
                     )
                     Box(Modifier.fillMaxWidth()) {
                         OutlinedTextField(

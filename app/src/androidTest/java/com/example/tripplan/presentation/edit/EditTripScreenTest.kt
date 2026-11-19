@@ -22,6 +22,7 @@ class EditTripScreenTest {
             MaterialTheme { EditTripScreenContent(uiState = state()) }
         }
 
+        composeRule.onNodeWithText("KR · 대한민국").assertIsDisplayed()
         composeRule.onNodeWithText("제주 여행").assertIsDisplayed()
         composeRule.onNodeWithText("여행 날짜").assertIsDisplayed()
         composeRule.onNodeWithText("변경사항 저장").performScrollTo().assertIsDisplayed()

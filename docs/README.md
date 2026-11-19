@@ -18,7 +18,9 @@
 - [단계별 개발 계획](planning/DEVELOPMENT_PLAN.md)
 - [2단계 14일 개발 계획](planning/STAGE2_DEVELOPMENT_PLAN.md)
 - [환율 API 네트워크 기반](planning/NETWORK_FOUNDATION.md)
+- [2026-11-13 작업 계획](planning/2026-11-13_WORK_PLAN.md)
 - [개발 규칙 안내](rules/README.md)
+- [Google Places 설정 및 보안](rules/GOOGLE_PLACES_SETUP.md)
 
 개발 중 사용하는 공식 기준 문서는 Markdown(`.md`) 형식으로 관리한다. 사용자가 제공한 DOCX와 교체된 문서는 참고용 원본으로 `archive` 폴더에 보존하며, 개발 기준으로 직접 사용하지 않는다.
 

@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.kapt)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.secrets.gradle)
 }
 
 android {
@@ -39,6 +40,12 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+    lint {
+        // Places SDK's transitive image loader exposes a notification target, but this app does
+        // not post notifications. Do not add POST_NOTIFICATIONS before a real feature needs it.
+        disable += "NotificationPermission"
     }
     sourceSets {
         getByName("androidTest").assets.srcDir("$projectDir/schemas")
@@ -74,6 +81,7 @@ dependencies {
     implementation(libs.retrofit.converter.kotlinx.serialization)
     implementation(libs.okhttp)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.google.places)
 
     kapt(libs.androidx.room.compiler)
     kapt(libs.hilt.compiler)
@@ -89,4 +97,9 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+}
+
+secrets {
+    propertiesFileName = "secrets.properties"
+    defaultPropertiesFileName = "local.defaults.properties"
 }

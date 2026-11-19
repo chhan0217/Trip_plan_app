@@ -9,6 +9,7 @@ import javax.inject.Inject
 
 data class ItineraryEditorData(
     val tripPlanId: Long,
+    val countryCode: String,
     val days: List<TripDay>,
     val item: ItineraryItem?,
 )
@@ -26,6 +27,7 @@ class PrepareItineraryEditorUseCase @Inject constructor(
         if (itemId != null && (item == null || item.tripPlanId != tripPlanId)) return null
         return ItineraryEditorData(
             tripPlanId = tripPlanId,
+            countryCode = tripPlan.countryCode,
             days = TripDateCalculator.createDays(tripPlan.startDate, tripPlan.endDate),
             item = item,
         )

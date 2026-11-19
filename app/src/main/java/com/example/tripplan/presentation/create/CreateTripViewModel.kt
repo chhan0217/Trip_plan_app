@@ -9,6 +9,7 @@ import com.example.tripplan.domain.rule.TripPlanValidationError
 import com.example.tripplan.domain.usecase.CreateTripPlanResult
 import com.example.tripplan.domain.usecase.CreateTripPlanUseCase
 import com.example.tripplan.domain.usecase.SearchRegionsUseCase
+import com.example.tripplan.domain.usecase.SearchTravelCitiesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import java.time.LocalDate
@@ -25,6 +26,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class CreateTripViewModel @Inject constructor(
     private val searchRegionsUseCase: SearchRegionsUseCase,
+    private val searchTravelCitiesUseCase: SearchTravelCitiesUseCase,
     private val createTripPlanUseCase: CreateTripPlanUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(CreateTripUiState())
@@ -188,8 +190,23 @@ class CreateTripViewModel @Inject constructor(
         if (normalizedQuery.length < MIN_REGION_QUERY_LENGTH) return
 
         regionSearchJob = viewModelScope.launch {
-            val results = searchRegionsUseCase(normalizedQuery)
-                .map { it.toUiModel() }
+            val state = _uiState.value
+            val localResults = if (state.countryCode == "KR") {
+                searchRegionsUseCase(normalizedQuery).map { it.toUiModel() }
+            } else {
+                emptyList()
+            }
+            val onlineResults = searchTravelCitiesUseCase(state.countryCode, normalizedQuery)
+                .map {
+                    RegionSearchResultUiModel(
+                        id = it.id,
+                        displayName = it.name,
+                        detailText = it.detail,
+                    )
+                }
+            val results = (onlineResults + localResults)
+                .distinctBy { it.displayName to it.detailText }
+                .take(MAX_SEARCH_RESULTS)
             _uiState.update {
                 it.copy(
                     regionSearchResults = results,
@@ -201,6 +218,7 @@ class CreateTripViewModel @Inject constructor(
 
     private companion object {
         const val MIN_REGION_QUERY_LENGTH = 2
+        const val MAX_SEARCH_RESULTS = 10
     }
 }
 

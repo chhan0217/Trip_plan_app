@@ -44,7 +44,7 @@ fun CountrySelector(
         ) {
             Column {
                 Text("여행 국가", style = MaterialTheme.typography.labelSmall)
-                Text(selected.countryName)
+                Text("${selected.countryCode} · ${selected.countryName}")
             }
             Text("$currencyCode · ${selected.currencyName}")
         }
@@ -80,7 +80,7 @@ private fun CountrySelectionDialog(
                     value = query,
                     onValueChange = { query = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("국가 또는 통화 검색") },
+                    label = { Text("국가 코드, 국가명 또는 통화 검색") },
                     singleLine = true,
                 )
                 LazyColumn(modifier = Modifier.heightIn(max = 420.dp)) {
@@ -93,7 +93,7 @@ private fun CountrySelectionDialog(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
-                                Text(country.countryName)
+                                Text("${country.countryCode} · ${country.countryName}")
                                 Text(country.currencyCode)
                             }
                         }

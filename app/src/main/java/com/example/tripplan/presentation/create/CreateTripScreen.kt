@@ -56,6 +56,7 @@ import androidx.compose.ui.window.PopupProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.tripplan.R
 import com.example.tripplan.presentation.common.CountrySelector
+import com.example.tripplan.presentation.common.TravelCitySuggestions
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -206,6 +207,11 @@ private fun TripInfoFields(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
+        CountrySelector(
+            countryCode = uiState.countryCode,
+            currencyCode = uiState.currencyCode,
+            onCountrySelected = onCountrySelected,
+        )
         OutlinedTextField(
             value = uiState.tripTitle,
             onValueChange = onTripTitleChange,
@@ -217,17 +223,13 @@ private fun TripInfoFields(
             isError = uiState.isTitleError,
             singleLine = true,
         )
-        CountrySelector(
-            countryCode = uiState.countryCode,
-            currencyCode = uiState.currencyCode,
-            onCountrySelected = onCountrySelected,
-        )
         Box(modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(
                 value = uiState.tripPlace,
                 onValueChange = onTripPlaceChange,
                 modifier = Modifier.fillMaxWidth().onSizeChanged { regionFieldSize = it },
-                label = { Text("여행 지역") },
+                label = { Text("여행 도시") },
+                placeholder = { Text("도시를 직접 입력하거나 아래에서 선택하세요.") },
                 singleLine = true,
             )
             if (uiState.isRegionSearchExpanded) {
@@ -245,6 +247,10 @@ private fun TripInfoFields(
                 }
             }
         }
+        TravelCitySuggestions(
+            countryCode = uiState.countryCode,
+            onCitySelected = onTripPlaceChange,
+        )
         Box(modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(
                 value = formatTripDateRange(uiState.startDate, uiState.endDate),

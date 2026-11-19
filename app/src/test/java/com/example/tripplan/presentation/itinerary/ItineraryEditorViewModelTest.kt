@@ -7,11 +7,19 @@ import com.example.tripplan.domain.usecase.DeleteItineraryItemUseCase
 import com.example.tripplan.domain.usecase.PrepareItineraryEditorUseCase
 import com.example.tripplan.domain.usecase.UpdateItineraryItemUseCase
 import com.example.tripplan.domain.usecase.ObservePlacesUseCase
+import com.example.tripplan.domain.usecase.CreatePlaceUseCase
+import com.example.tripplan.domain.usecase.DeletePlaceUseCase
+import com.example.tripplan.domain.usecase.GetExternalPlaceDetailsUseCase
+import com.example.tripplan.domain.usecase.SearchExternalPlacesUseCase
+import com.example.tripplan.domain.repository.ExternalPlaceSearchRepository
+import com.example.tripplan.domain.model.ExternalPlaceDetails
+import com.example.tripplan.domain.model.ExternalPlaceSuggestion
 import com.example.tripplan.testutil.FakeItineraryRepository
 import com.example.tripplan.testutil.FakeTripPlanRepository
 import com.example.tripplan.testutil.MainDispatcherRule
 import com.example.tripplan.testutil.FakePlaceRepository
 import java.time.Instant
+import java.time.Clock
 import java.time.LocalDate
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -104,13 +112,29 @@ class ItineraryEditorViewModelTest {
             setTrips(listOf(sampleTrip))
         },
         items: FakeItineraryRepository = FakeItineraryRepository(),
-    ) = ItineraryEditorViewModel(
-        prepareEditor = PrepareItineraryEditorUseCase(trips, items),
-        createItem = CreateItineraryItemUseCase(trips, items),
-        updateItem = UpdateItineraryItemUseCase(trips, items),
-        deleteItem = DeleteItineraryItemUseCase(items),
-        observePlaces = ObservePlacesUseCase(FakePlaceRepository()),
-    )
+    ): ItineraryEditorViewModel {
+        val places = FakePlaceRepository()
+        return ItineraryEditorViewModel(
+            prepareEditor = PrepareItineraryEditorUseCase(trips, items),
+            createItem = CreateItineraryItemUseCase(trips, items),
+            updateItem = UpdateItineraryItemUseCase(trips, items),
+            deleteItem = DeleteItineraryItemUseCase(items),
+            observePlaces = ObservePlacesUseCase(places),
+            searchExternalPlaces = SearchExternalPlacesUseCase(EmptyExternalPlaceSearchRepository),
+            getExternalPlaceDetails = GetExternalPlaceDetailsUseCase(EmptyExternalPlaceSearchRepository),
+            createPlace = CreatePlaceUseCase(places, Clock.systemUTC()),
+            deletePlace = DeletePlaceUseCase(places),
+        )
+    }
+
+    private object EmptyExternalPlaceSearchRepository : ExternalPlaceSearchRepository {
+        override suspend fun search(
+            countryCode: String,
+            query: String,
+        ): List<ExternalPlaceSuggestion> = emptyList()
+
+        override suspend fun getDetails(externalId: String): ExternalPlaceDetails? = null
+    }
 
     private val firstDate = LocalDate.of(2026, 11, 9)
     private val secondDate = LocalDate.of(2026, 11, 10)

@@ -26,6 +26,10 @@ import com.example.tripplan.data.repository.DefaultTripMoneyDisplayPreferenceRep
 import com.example.tripplan.domain.repository.TripMoneyDisplayPreferenceRepository
 import com.example.tripplan.data.repository.AndroidDeviceCapabilityRepository
 import com.example.tripplan.domain.repository.DeviceCapabilityRepository
+import com.example.tripplan.data.repository.GoogleTravelCityRepository
+import com.example.tripplan.domain.repository.TravelCityRepository
+import com.example.tripplan.data.repository.GoogleExternalPlaceSearchRepository
+import com.example.tripplan.domain.repository.ExternalPlaceSearchRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -90,4 +94,14 @@ abstract class RepositoryModule {
     abstract fun bindDeviceCapabilityRepository(
         repository: AndroidDeviceCapabilityRepository,
     ): DeviceCapabilityRepository
+
+    @Binds
+    abstract fun bindTravelCityRepository(
+        repository: GoogleTravelCityRepository,
+    ): TravelCityRepository
+
+    @Binds
+    abstract fun bindExternalPlaceSearchRepository(
+        repository: GoogleExternalPlaceSearchRepository,
+    ): ExternalPlaceSearchRepository
 }

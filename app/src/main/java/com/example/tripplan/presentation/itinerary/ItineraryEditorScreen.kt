@@ -1,5 +1,7 @@
 package com.example.tripplan.presentation.itinerary
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,6 +31,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
@@ -66,6 +69,7 @@ fun ItineraryEditorScreen(
         onTitleChange = viewModel::onTitleChange,
         onPlaceChange = viewModel::onPlaceChange,
         onSavedPlaceSelected = viewModel::onSavedPlaceSelected,
+        onPlaceSuggestionSelected = viewModel::onPlaceSuggestionSelected,
         onDateSelected = viewModel::onDateSelected,
         onStartTimeChange = viewModel::onStartTimeChange,
         onEndTimeChange = viewModel::onEndTimeChange,
@@ -85,6 +89,7 @@ internal fun ItineraryEditorScreenContent(
     onTitleChange: (String) -> Unit = {},
     onPlaceChange: (String) -> Unit = {},
     onSavedPlaceSelected: (Long) -> Unit = {},
+    onPlaceSuggestionSelected: (PlaceSuggestionUiModel) -> Unit = {},
     onDateSelected: (LocalDate) -> Unit = {},
     onStartTimeChange: (String) -> Unit = {},
     onEndTimeChange: (String) -> Unit = {},
@@ -113,6 +118,7 @@ internal fun ItineraryEditorScreenContent(
                     onTitleChange = onTitleChange,
                     onPlaceChange = onPlaceChange,
                     onSavedPlaceSelected = onSavedPlaceSelected,
+                    onPlaceSuggestionSelected = onPlaceSuggestionSelected,
                     onDateSelected = onDateSelected,
                     onStartTimeChange = onStartTimeChange,
                     onEndTimeChange = onEndTimeChange,
@@ -171,6 +177,7 @@ private fun EditorForm(
     onTitleChange: (String) -> Unit,
     onPlaceChange: (String) -> Unit,
     onSavedPlaceSelected: (Long) -> Unit,
+    onPlaceSuggestionSelected: (PlaceSuggestionUiModel) -> Unit,
     onDateSelected: (LocalDate) -> Unit,
     onStartTimeChange: (String) -> Unit,
     onEndTimeChange: (String) -> Unit,
@@ -231,8 +238,51 @@ private fun EditorForm(
                     onValueChange = onPlaceChange,
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("장소") },
+                    placeholder = { Text("관광지, 식당, 숙소 등을 검색하세요.") },
                     singleLine = true,
                 )
+                if (uiState.isPlaceSearchLoading) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+                if (uiState.placeSuggestions.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            "Google Places 검색 결과",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        uiState.placeSuggestions.forEach { suggestion ->
+                            TextButton(
+                                onClick = { onPlaceSuggestionSelected(suggestion) },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    Text(suggestion.name, style = MaterialTheme.typography.bodyLarge)
+                                    if (suggestion.addressHint.isNotBlank()) {
+                                        Text(
+                                            suggestion.addressHint,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                if (uiState.selectedPlaceAddress.isNotBlank()) {
+                    Text(
+                        uiState.selectedPlaceAddress,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                GoogleMapsButton(uiState)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -295,6 +345,35 @@ private fun EditorForm(
             }
         }
         item { Text("", modifier = Modifier.padding(bottom = 8.dp)) }
+    }
+}
+
+@Composable
+private fun GoogleMapsButton(uiState: ItineraryEditorUiState) {
+    val context = LocalContext.current
+    val mapUri = uiState.googleMapsUri() ?: return
+    OutlinedButton(
+        onClick = {
+            context.startActivity(Intent(Intent.ACTION_VIEW, mapUri))
+        },
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text("Google 지도에서 보기")
+    }
+}
+
+private fun ItineraryEditorUiState.googleMapsUri(): Uri? {
+    val query = selectedPlaceAddress.ifBlank { place }
+    return when {
+        selectedExternalPlaceId != null -> Uri.parse(
+            "https://www.google.com/maps/search/?api=1&query=" +
+                Uri.encode(query) + "&query_place_id=" + Uri.encode(selectedExternalPlaceId)
+        )
+        selectedPlaceLatitude != null && selectedPlaceLongitude != null -> Uri.parse(
+            "https://www.google.com/maps/search/?api=1&query=" +
+                Uri.encode("$selectedPlaceLatitude,$selectedPlaceLongitude")
+        )
+        else -> null
     }
 }
 

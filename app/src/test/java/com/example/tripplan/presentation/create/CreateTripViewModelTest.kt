@@ -2,8 +2,11 @@ package com.example.tripplan.presentation.create
 
 import com.example.tripplan.domain.model.Region
 import com.example.tripplan.domain.repository.RegionRepository
+import com.example.tripplan.domain.repository.TravelCityRepository
+import com.example.tripplan.domain.model.TravelCity
 import com.example.tripplan.domain.usecase.CreateTripPlanUseCase
 import com.example.tripplan.domain.usecase.SearchRegionsUseCase
+import com.example.tripplan.domain.usecase.SearchTravelCitiesUseCase
 import com.example.tripplan.testutil.FakeTripPlanRepository
 import com.example.tripplan.testutil.MainDispatcherRule
 import java.time.LocalDate
@@ -112,11 +115,17 @@ class CreateTripViewModelTest {
     ): CreateTripViewModel {
         return CreateTripViewModel(
             searchRegionsUseCase = SearchRegionsUseCase(EmptyRegionRepository),
+            searchTravelCitiesUseCase = SearchTravelCitiesUseCase(EmptyTravelCityRepository),
             createTripPlanUseCase = CreateTripPlanUseCase(repository),
         )
     }
 
     private object EmptyRegionRepository : RegionRepository {
         override suspend fun searchRegions(query: String, limit: Int): List<Region> = emptyList()
+    }
+
+    private object EmptyTravelCityRepository : TravelCityRepository {
+        override suspend fun search(countryCode: String, query: String): List<TravelCity> =
+            emptyList()
     }
 }
