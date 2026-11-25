@@ -228,6 +228,7 @@ class TripDetailViewModel @Inject constructor(
         amount: String,
         category: ExpenseCategory,
         inputCurrencyCode: String,
+        description: String = "",
     ) {
         val details = currentDetails ?: return
         val date = pendingExpenseDate ?: return
@@ -264,6 +265,7 @@ class TripDetailViewModel @Inject constructor(
                             krwPerUnit = rate.krwPerUnit,
                             rateDate = rate.rateDate,
                             category = category,
+                            description = description,
                         )
                     )
                 ) {
@@ -296,6 +298,7 @@ class TripDetailViewModel @Inject constructor(
                     amountText = expense.amount.asDisplayNumber(),
                     currencyCode = expense.currencyCode,
                     category = expense.category,
+                    description = expense.description,
                     inputRate = BudgetInputRate(expense.krwPerUnit, expense.rateDate),
                 ),
                 isExpenseDeleteConfirmationVisible = false,
@@ -315,6 +318,7 @@ class TripDetailViewModel @Inject constructor(
         category: ExpenseCategory,
         inputCurrencyCode: String,
         timeText: String,
+        description: String = "",
     ) {
         val details = currentDetails ?: return
         val editor = _uiState.value.editingExpense ?: return
@@ -352,6 +356,7 @@ class TripDetailViewModel @Inject constructor(
                             amount = parsedAmount,
                             currencyCode = normalizedCurrency,
                             category = category,
+                            description = description,
                         )
                     )
                 ) {
@@ -606,8 +611,10 @@ data class TripDetailUiState(
     val moneyDisplayCurrency: TripMoneyDisplayCurrency = TripMoneyDisplayCurrency.KRW,
     val expenseSummary: ExpenseSummaryUiModel = ExpenseSummaryUiModel(),
     val isTripEnded: Boolean = false,
+    val isTripOngoing: Boolean = false,
     val editingExpense: ExpenseEditorUiModel? = null,
     val isExpenseDeleteConfirmationVisible: Boolean = false,
+    val isDraft: Boolean = false,
 )
 
 data class ExpenseEditorUiModel(
@@ -618,6 +625,7 @@ data class ExpenseEditorUiModel(
     val currencyCode: String,
     val category: ExpenseCategory,
     val inputRate: BudgetInputRate,
+    val description: String = "",
 )
 
 data class ExpenseSummaryUiModel(
@@ -663,6 +671,7 @@ data class ExpenseUiModel(
     val convertedKrwText: String,
     val sortMinutes: Int,
     val secondaryAmountText: String = convertedKrwText,
+    val description: String = "",
 )
 
 data class ItineraryCostUiModel(
@@ -700,8 +709,13 @@ private fun TripPlanDetails.toUiState(
     expenses: List<Expense>,
     storedDisplayCurrency: TripMoneyDisplayCurrency?,
 ): TripDetailUiState {
+    val status = getTripStatus(tripPlan)
+    val todayInTrip = today.takeIf {
+        !status.isCompleted && status.dateStatus.phase == TripDatePhase.Ongoing && days.any { day -> day.date == today }
+    }
     val selectedDate = previousSelectedDate
         ?.takeIf { selected -> days.any { it.date == selected } }
+        ?: todayInTrip
         ?: days.firstOrNull()?.date
 
     val selectedItems = itineraryItems.filter { it.date == selectedDate }
@@ -715,7 +729,6 @@ private fun TripPlanDetails.toUiState(
             total + expense.convertedKrwAmount
         }
 
-    val status = getTripStatus(tripPlan)
     val displayCurrency = storedDisplayCurrency ?: if (
         status.dateStatus.phase == TripDatePhase.Ongoing
     ) {
@@ -748,6 +761,7 @@ private fun TripPlanDetails.toUiState(
     val categoryTotalLocal = categoryTotals.sumOf { it.localAmount }
     return TripDetailUiState(
         isLoading = false,
+        isDraft = tripPlan.isDraft,
         title = tripPlan.title,
         destination = tripPlan.destination,
         dateText = "${tripPlan.startDate.format(detailDateFormatter)} - " +
@@ -764,6 +778,7 @@ private fun TripPlanDetails.toUiState(
         },
         isCompleted = status.isCompleted,
         isTripEnded = status.dateStatus.phase == TripDatePhase.Ended,
+        isTripOngoing = status.dateStatus.phase == TripDatePhase.Ongoing,
         statusText = if (status.isCompleted) "완료" else when (status.dateStatus.phase) {
             TripDatePhase.Upcoming -> "D-${status.dateStatus.daysUntilStart}"
             TripDatePhase.Ongoing -> if (status.dateStatus.currentDayNumber == 1) {
@@ -818,7 +833,7 @@ private fun TripPlanDetails.toUiState(
             totalLocalText = categoryTotalLocal.asMoney(tripPlan.currencyCode),
         ),
         standaloneExpenses = selectedExpenses
-            .filter { it.itineraryItemId == null }
+            .filter { expense -> selectedItems.none { it.id == expense.itineraryItemId } }
             .map { it.toUiModel(tripPlan.currencyCode) },
         itineraryItems = selectedItems.mapIndexed { index, item ->
                 item.toUiModel(
@@ -865,6 +880,7 @@ private fun Expense.toUiModel(currencyCode: String) = ExpenseUiModel(
     id = id,
     timeText = occurredTime.format(timeFormatter),
     categoryText = category.toKoreanLabel(),
+    description = description,
     amountText = "${amount.asDisplayNumber()} $currencyCode",
     convertedKrwText = convertedKrwAmount.asWon(),
     sortMinutes = occurredTime.hour * 60 + occurredTime.minute,

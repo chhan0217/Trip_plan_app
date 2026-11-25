@@ -322,6 +322,90 @@ object DatabaseMigrations {
         }
     }
 
+    val Migration10To11 = object : Migration(10, 11) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE trip_plans ADD COLUMN isDraft INTEGER NOT NULL DEFAULT 0"
+            )
+        }
+    }
+
+    val Migration11To12 = object : Migration(11, 12) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE place_candidates (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    tripPlanId INTEGER NOT NULL,
+                    name TEXT NOT NULL,
+                    address TEXT NOT NULL,
+                    note TEXT NOT NULL,
+                    placeId INTEGER,
+                    itineraryId INTEGER,
+                    FOREIGN KEY(tripPlanId) REFERENCES trip_plans(id) ON UPDATE NO ACTION ON DELETE CASCADE,
+                    FOREIGN KEY(placeId) REFERENCES places(id) ON UPDATE NO ACTION ON DELETE SET NULL,
+                    FOREIGN KEY(itineraryId) REFERENCES itinerary_items(id) ON UPDATE NO ACTION ON DELETE SET NULL
+                )
+                """.trimIndent()
+            )
+            listOf("tripPlanId", "placeId", "itineraryId").forEach { column ->
+                db.execSQL("CREATE INDEX index_place_candidates_$column ON place_candidates ($column)")
+            }
+        }
+    }
+
+    val Migration12To13 = object : Migration(12, 13) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE lodgings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    tripPlanId INTEGER NOT NULL,
+                    name TEXT NOT NULL,
+                    checkIn TEXT NOT NULL,
+                    checkOut TEXT NOT NULL,
+                    address TEXT NOT NULL,
+                    checkInTime TEXT,
+                    note TEXT NOT NULL,
+                    FOREIGN KEY(tripPlanId) REFERENCES trip_plans(id) ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+                """.trimIndent()
+            )
+            db.execSQL("CREATE INDEX index_lodgings_tripPlanId ON lodgings (tripPlanId)")
+        }
+    }
+
+    val Migration13To14 = object : Migration(13, 14) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE lodgings ADD COLUMN checkOutTime TEXT")
+            db.execSQL("ALTER TABLE lodgings ADD COLUMN latitude REAL")
+            db.execSQL("ALTER TABLE lodgings ADD COLUMN longitude REAL")
+            db.execSQL("ALTER TABLE lodgings ADD COLUMN googlePlaceId TEXT")
+        }
+    }
+
+    val Migration14To15 = object : Migration(14, 15) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE expenses ADD COLUMN description TEXT NOT NULL DEFAULT ''")
+        }
+    }
+
+    val Migration15To16 = object : Migration(15, 16) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE itinerary_photos (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    itineraryId INTEGER NOT NULL,
+                    jpeg BLOB NOT NULL,
+                    FOREIGN KEY(itineraryId) REFERENCES itinerary_items(id) ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+                """.trimIndent()
+            )
+            db.execSQL("CREATE INDEX index_itinerary_photos_itineraryId ON itinerary_photos (itineraryId)")
+        }
+    }
+
     val All = arrayOf(
         Migration1To2,
         Migration2To3,
@@ -332,6 +416,12 @@ object DatabaseMigrations {
         Migration7To8,
         Migration8To9,
         Migration9To10,
+        Migration10To11,
+        Migration11To12,
+        Migration12To13,
+        Migration13To14,
+        Migration14To15,
+        Migration15To16,
     )
 
     private fun SupportSQLiteDatabase.hasColumn(tableName: String, columnName: String): Boolean =

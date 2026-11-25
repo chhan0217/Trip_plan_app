@@ -3,6 +3,7 @@ package com.example.tripplan.presentation.home
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.example.tripplan.presentation.create.ComposeTestActivity
@@ -20,9 +21,39 @@ class HomeScreenTest {
             MaterialTheme { HomeScreenContent(uiState = HomeUiState(isLoading = false)) }
         }
 
-        composeRule.onNodeWithText("새 여행 추가").assertIsDisplayed()
-        composeRule.onNodeWithText("여행 파일 가져오기").assertIsDisplayed()
-        composeRule.onNodeWithText("등록된 여행이 없습니다.").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("새 여행 추가").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("여행 파일 가져오기").assertIsDisplayed()
+        composeRule.onNodeWithText("예정되었거나 진행 중인 여행이 없습니다.").assertIsDisplayed()
+    }
+
+    @Test
+    fun addTripFab_invokesAddAction() {
+        var clicked = false
+        composeRule.setContent {
+            MaterialTheme {
+                HomeScreenContent(
+                    uiState = HomeUiState(isLoading = false),
+                    onAddTripClick = { clicked = true },
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("새 여행 추가").performClick()
+
+        composeRule.runOnIdle { assertEquals(true, clicked) }
+    }
+
+    @Test
+    fun tabs_showMatchingEmptyMessages() {
+        composeRule.setContent {
+            MaterialTheme { HomeScreenContent(uiState = HomeUiState(isLoading = false)) }
+        }
+
+        composeRule.onNodeWithText("작성 중").performClick()
+        composeRule.onNodeWithText("작성 중인 여행 계획이 없습니다.").assertIsDisplayed()
+
+        composeRule.onNodeWithText("지난 여행").performClick()
+        composeRule.onNodeWithText("지난 여행이 없습니다.").assertIsDisplayed()
     }
 
     @Test
@@ -48,6 +79,35 @@ class HomeScreenTest {
     }
 
     @Test
+    fun draftCard_invokesPlanningAction() {
+        var selectedId: Long? = null
+        composeRule.setContent {
+            MaterialTheme {
+                HomeScreenContent(
+                    uiState = HomeUiState(
+                        isLoading = false,
+                        trips = listOf(
+                            HomeTripUiModel(
+                                9L,
+                                "다낭 계획",
+                                "2026.11.20 - 2026.11.23",
+                                "다낭",
+                                section = HomeTripSection.Draft,
+                            )
+                        ),
+                    ),
+                    onDraftTripClick = { selectedId = it },
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("작성 중 1").performClick()
+        composeRule.onNodeWithText("다낭 계획").performClick()
+
+        composeRule.runOnIdle { assertEquals(9L, selectedId) }
+    }
+
+    @Test
     fun exchangeRateCard_showsSelectedRatesAndReferenceDate() {
         composeRule.setContent {
             MaterialTheme {
@@ -63,6 +123,8 @@ class HomeScreenTest {
             }
         }
 
+        composeRule.onNodeWithText("오늘의 환율").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("여행 도구").performClick()
         composeRule.onNodeWithText("오늘의 환율").assertIsDisplayed()
         composeRule.onNodeWithText("미국 달러").assertIsDisplayed()
         composeRule.onNodeWithText("1 USD = 1,466.8원").assertIsDisplayed()

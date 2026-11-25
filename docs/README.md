@@ -2,6 +2,8 @@
 
 프로젝트의 제품, 계획, 규칙 관련 문서는 이 폴더에서 관리한다.
 
+현재 앱의 화면과 사용 흐름은 [화면별 기능 안내](product/SCREEN_FEATURES.md)에서 확인한다. 구현 범위와 최근 검증 결과는 [단계별 개발 계획](planning/DEVELOPMENT_PLAN.md)의 현재 진행 상황을 참고한다. 2단계 문서와 날짜별 작업 계획은 당시의 결정과 검증을 기록한다.
+
 ## 폴더 구성
 
 - `product`: 제품 방향과 기능 명세
@@ -16,6 +18,7 @@
 - [공유 파일 형식 v2 계약](product/FILE_FORMAT_V2_DRAFT.md)
 - [2단계 요구사항 확정 기록](product/STAGE2_REQUIREMENTS.md)
 - [단계별 개발 계획](planning/DEVELOPMENT_PLAN.md)
+- [남은 기능과 검증](planning/DEVELOPMENT_PLAN.md#남은-기능과-검증)
 - [2단계 14일 개발 계획](planning/STAGE2_DEVELOPMENT_PLAN.md)
 - [환율 API 네트워크 기반](planning/NETWORK_FOUNDATION.md)
 - [2026-11-13 작업 계획](planning/2026-11-13_WORK_PLAN.md)

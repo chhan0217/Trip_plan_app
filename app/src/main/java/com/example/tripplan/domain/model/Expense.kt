@@ -27,6 +27,7 @@ data class Expense(
     val convertedKrwAmount: BigDecimal,
     val category: ExpenseCategory,
     val createdAt: Instant,
+    val description: String = "",
 )
 
 data class RecordExpenseInput(
@@ -39,6 +40,7 @@ data class RecordExpenseInput(
     val krwPerUnit: BigDecimal,
     val rateDate: LocalDate,
     val category: ExpenseCategory,
+    val description: String = "",
 )
 
 data class UpdateExpenseInput(
@@ -50,4 +52,5 @@ data class UpdateExpenseInput(
     val amount: BigDecimal,
     val currencyCode: String,
     val category: ExpenseCategory,
+    val description: String = "",
 )

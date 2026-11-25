@@ -28,7 +28,7 @@ class CreateTripScreenTest {
         composeRule.onNodeWithText("여행 도시").assertIsDisplayed()
         composeRule.onNodeWithText("추천 도시").assertIsDisplayed()
         composeRule.onNodeWithText("여행 날짜").assertIsDisplayed()
-        composeRule.onNodeWithText("여행 만들기").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("일정 작성하기").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -63,7 +63,7 @@ class CreateTripScreenTest {
             }
         }
 
-        composeRule.onNodeWithText("여행 만들기").performScrollTo().performClick()
+        composeRule.onNodeWithText("일정 작성하기").performScrollTo().performClick()
 
         composeRule.runOnIdle {
             assertTrue(wasClicked)

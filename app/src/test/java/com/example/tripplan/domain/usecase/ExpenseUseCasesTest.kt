@@ -33,14 +33,16 @@ class ExpenseUseCasesTest {
                 currencyCode = "JPY",
                 krwPerUnit = BigDecimal("9.52"),
                 rateDate = LocalDate.of(2026, 11, 10),
-                category = ExpenseCategory.Food,
+                category = ExpenseCategory.Other,
+                description = "  짐 보관 요금  ",
             )
         )
 
         assertTrue(result is RecordExpenseResult.Success)
         val expense = repository.values().single()
         assertEquals(21L, expense.itineraryItemId)
-        assertEquals(ExpenseCategory.Food, expense.category)
+        assertEquals(ExpenseCategory.Other, expense.category)
+        assertEquals("짐 보관 요금", expense.description)
         assertEquals(BigDecimal("23800"), expense.convertedKrwAmount)
         assertEquals(LocalTime.of(11, 30), expense.occurredTime)
     }
@@ -85,6 +87,7 @@ class ExpenseUseCasesTest {
                 amount = BigDecimal("3000"),
                 currencyCode = "JPY",
                 category = ExpenseCategory.Transportation,
+                description = "다른 카테고리에는 저장하지 않음",
             )
         )
 
@@ -95,6 +98,7 @@ class ExpenseUseCasesTest {
         assertEquals(BigDecimal("28560"), updated.convertedKrwAmount)
         assertEquals(LocalTime.of(15, 20), updated.occurredTime)
         assertEquals(ExpenseCategory.Transportation, updated.category)
+        assertEquals("", updated.description)
     }
 
     @Test

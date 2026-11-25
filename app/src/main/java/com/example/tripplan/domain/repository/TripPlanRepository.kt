@@ -17,6 +17,11 @@ interface TripPlanRepository {
         completedAt: Instant?,
         updatedAt: Instant,
     ): Boolean
+    suspend fun updateTripDraftStatus(
+        tripPlanId: Long,
+        isDraft: Boolean,
+        updatedAt: Instant,
+    ): Boolean = false
     suspend fun updateTripPlanAndDeleteItineraryItems(
         tripPlan: TripPlan,
         itemIds: List<Long>,

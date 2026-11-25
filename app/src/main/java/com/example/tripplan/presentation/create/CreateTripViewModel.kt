@@ -62,11 +62,16 @@ class CreateTripViewModel @Inject constructor(
 
     fun onCountrySelected(countryCode: String) {
         val country = CountryCurrencyCatalog.find(countryCode) ?: return
+        regionSearchJob?.cancel()
         _uiState.update {
             it.copy(
                 countryCode = country.countryCode,
                 countryName = country.countryName,
                 currencyCode = country.currencyCode,
+                tripPlace = "",
+                selectedRegion = null,
+                regionSearchResults = emptyList(),
+                isRegionSearchExpanded = false,
                 isSaveFailed = false,
             )
         }
@@ -147,6 +152,7 @@ class CreateTripViewModel @Inject constructor(
                             description = state.description,
                             countryCode = state.countryCode,
                             currencyCode = state.currencyCode,
+                            isDraft = true,
                         )
                     )
                 ) {
@@ -190,13 +196,13 @@ class CreateTripViewModel @Inject constructor(
         if (normalizedQuery.length < MIN_REGION_QUERY_LENGTH) return
 
         regionSearchJob = viewModelScope.launch {
-            val state = _uiState.value
-            val localResults = if (state.countryCode == "KR") {
+            val countryCode = _uiState.value.countryCode
+            val localResults = if (countryCode == "KR") {
                 searchRegionsUseCase(normalizedQuery).map { it.toUiModel() }
             } else {
                 emptyList()
             }
-            val onlineResults = searchTravelCitiesUseCase(state.countryCode, normalizedQuery)
+            val onlineResults = searchTravelCitiesUseCase(countryCode, normalizedQuery)
                 .map {
                     RegionSearchResultUiModel(
                         id = it.id,
@@ -207,8 +213,9 @@ class CreateTripViewModel @Inject constructor(
             val results = (onlineResults + localResults)
                 .distinctBy { it.displayName to it.detailText }
                 .take(MAX_SEARCH_RESULTS)
-            _uiState.update {
-                it.copy(
+            _uiState.update { current ->
+                if (current.countryCode != countryCode || current.tripPlace.trim() != normalizedQuery) current
+                else current.copy(
                     regionSearchResults = results,
                     isRegionSearchExpanded = results.isNotEmpty(),
                 )

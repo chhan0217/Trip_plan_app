@@ -46,6 +46,7 @@ class DefaultTripPlanRepository @Inject constructor(
                 updatedAt = now,
                 countryCode = input.countryCode,
                 currencyCode = input.currencyCode,
+                isDraft = input.isDraft,
             )
         )
     }
@@ -61,6 +62,16 @@ class DefaultTripPlanRepository @Inject constructor(
     ): Boolean = tripPlanDao.updateTripCompletion(
         tripPlanId = tripPlanId,
         completedAt = completedAt?.toEpochMilli(),
+        updatedAt = updatedAt.toEpochMilli(),
+    ) > 0
+
+    override suspend fun updateTripDraftStatus(
+        tripPlanId: Long,
+        isDraft: Boolean,
+        updatedAt: Instant,
+    ): Boolean = tripPlanDao.updateTripDraftStatus(
+        tripPlanId = tripPlanId,
+        isDraft = isDraft,
         updatedAt = updatedAt.toEpochMilli(),
     ) > 0
 

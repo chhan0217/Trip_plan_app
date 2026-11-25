@@ -24,6 +24,31 @@ class ItineraryMapUiStateTest {
         assertEquals(listOf(listOf(1L, 2L), listOf(3L, 4L)), state.lineSegments.map { it.map(MapItemUiModel::id) })
     }
 
+    @Test
+    fun `google place opens by place id`() {
+        val item = item(1, 16.0678, 108.2241).copy(
+            placeName = "한시장",
+            address = "119 Tran Phu",
+            providerName = "Google Places",
+            externalId = "ChIJ-place-id",
+        )
+
+        assertEquals(
+            "https://www.google.com/maps/search/?api=1&query=119%20Tran%20Phu&query_place_id=ChIJ-place-id",
+            item.googleMapsUrl(),
+        )
+    }
+
+    @Test
+    fun `place without google place id opens by coordinates`() {
+        val item = item(1, 16.0678, 108.2241)
+
+        assertEquals(
+            "https://www.google.com/maps/search/?api=1&query=16.0678,108.2241",
+            item.googleMapsUrl(),
+        )
+    }
+
     private fun item(id: Long, latitude: Double?, longitude: Double?, itemDate: LocalDate = date, dayNumber: Int = 1) =
         MapItemUiModel(id, itemDate, dayNumber, id.toString(), "일정 $id", "장소 $id", "", null, latitude, longitude)
 }

@@ -30,6 +30,12 @@ import com.example.tripplan.data.repository.GoogleTravelCityRepository
 import com.example.tripplan.domain.repository.TravelCityRepository
 import com.example.tripplan.data.repository.GoogleExternalPlaceSearchRepository
 import com.example.tripplan.domain.repository.ExternalPlaceSearchRepository
+import com.example.tripplan.data.repository.DefaultPlaceCandidateRepository
+import com.example.tripplan.domain.repository.PlaceCandidateRepository
+import com.example.tripplan.data.repository.DefaultLodgingRepository
+import com.example.tripplan.domain.repository.LodgingRepository
+import com.example.tripplan.data.repository.DefaultItineraryPhotoRepository
+import com.example.tripplan.domain.repository.ItineraryPhotoRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -38,6 +44,15 @@ import dagger.hilt.components.SingletonComponent
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RepositoryModule {
+    @Binds
+    abstract fun bindItineraryPhotoRepository(repository: DefaultItineraryPhotoRepository): ItineraryPhotoRepository
+
+    @Binds
+    abstract fun bindLodgingRepository(repository: DefaultLodgingRepository): LodgingRepository
+
+    @Binds
+    abstract fun bindPlaceCandidateRepository(repository: DefaultPlaceCandidateRepository): PlaceCandidateRepository
+
     @Binds
     abstract fun bindTripPlanRepository(
         repository: DefaultTripPlanRepository,

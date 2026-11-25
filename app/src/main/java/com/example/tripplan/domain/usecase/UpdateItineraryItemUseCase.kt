@@ -1,10 +1,12 @@
 package com.example.tripplan.domain.usecase
 
+import com.example.tripplan.domain.model.ItineraryItem
 import com.example.tripplan.domain.model.ItineraryItemInput
 import com.example.tripplan.domain.repository.ItineraryRepository
 import com.example.tripplan.domain.repository.TripPlanRepository
 import com.example.tripplan.domain.rule.ItineraryItemValidator
 import com.example.tripplan.domain.rule.ItineraryTimeOrderNormalizer
+import java.time.LocalDate
 import javax.inject.Inject
 import kotlinx.coroutines.flow.first
 
@@ -15,11 +17,30 @@ class UpdateItineraryItemUseCase @Inject constructor(
     suspend operator fun invoke(
         itemId: Long,
         input: ItineraryItemInput,
+    ): ItineraryMutationResult = update(itemId) { input }
+
+    suspend fun changeDate(itemId: Long, date: LocalDate): ItineraryMutationResult =
+        update(itemId) { item ->
+            ItineraryItemInput(
+                date = date,
+                title = item.title,
+                place = item.place,
+                startTime = item.startTime,
+                endTime = item.endTime,
+                note = item.note,
+                placeId = item.placeId,
+            )
+        }
+
+    private suspend fun update(
+        itemId: Long,
+        inputFor: (ItineraryItem) -> ItineraryItemInput,
     ): ItineraryMutationResult {
         val existing = itineraryRepository.getItem(itemId)
             ?: return ItineraryMutationResult.ItemNotFound
         val tripPlan = tripPlanRepository.getTripPlan(existing.tripPlanId)
             ?: return ItineraryMutationResult.TripNotFound
+        val input = inputFor(existing)
         val errors = ItineraryItemValidator.validate(input, tripPlan.startDate, tripPlan.endDate)
         if (errors.isNotEmpty()) return ItineraryMutationResult.Invalid(errors)
 

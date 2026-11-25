@@ -533,6 +533,175 @@ class TripPlanDatabaseMigrationTest {
         database.close()
     }
 
+    @Test
+    @Throws(IOException::class)
+    fun migrate10To11_marksExistingTripsAsReady() {
+        helper.createDatabase(TEST_DATABASE_FROM_V10, 10).apply {
+            execSQL(
+                """
+                INSERT INTO trip_plans (
+                    id, title, destination, startDate, endDate, description,
+                    createdAt, updatedAt, completedAt, countryCode, currencyCode
+                ) VALUES (
+                    1, '기존 여행', '제주', '2026-11-09', '2026-11-11', '',
+                    1, 1, NULL, 'KR', 'KRW'
+                )
+                """.trimIndent()
+            )
+            close()
+        }
+
+        val database = helper.runMigrationsAndValidate(
+            TEST_DATABASE_FROM_V10,
+            11,
+            true,
+            DatabaseMigrations.Migration10To11,
+        )
+        database.query("SELECT isDraft FROM trip_plans WHERE id = 1").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals(0, cursor.getInt(0))
+        }
+        database.close()
+    }
+
+    @Test
+    fun migrate11To12_preservesDraftTravelData() {
+        val name = "migration-place-candidates"
+        helper.createDatabase(name, 11).apply {
+            execSQL(
+                """
+                INSERT INTO trip_plans (
+                    id, title, destination, startDate, endDate, description, createdAt, updatedAt, isDraft
+                ) VALUES (1, '기존 여행', '제주', '2026-11-27', '2026-11-28', '', 1, 1, 1)
+                """.trimIndent()
+            )
+            close()
+        }
+        helper.runMigrationsAndValidate(name, 12, true, DatabaseMigrations.Migration11To12).use { database ->
+            database.query("SELECT title, isDraft FROM trip_plans WHERE id = 1").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals("기존 여행", cursor.getString(0))
+                assertEquals(1, cursor.getInt(1))
+            }
+            database.query("SELECT COUNT(*) FROM place_candidates").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(0, cursor.getInt(0))
+            }
+        }
+    }
+
+    @Test
+    fun migrate12To13_preservesExistingCandidates() {
+        val name = "migration-lodgings"
+        helper.createDatabase(name, 12).apply {
+            execSQL(
+                """
+                INSERT INTO trip_plans (
+                    id, title, destination, startDate, endDate, description, createdAt, updatedAt, isDraft
+                ) VALUES (1, '기존 여행', '제주', '2026-11-26', '2026-11-28', '', 1, 1, 1)
+                """.trimIndent()
+            )
+            execSQL("INSERT INTO place_candidates (tripPlanId, name, address, note) VALUES (1, '동문시장', '', '')")
+            close()
+        }
+        helper.runMigrationsAndValidate(name, 13, true, DatabaseMigrations.Migration12To13).use { database ->
+            database.query("SELECT name FROM place_candidates").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals("동문시장", cursor.getString(0))
+            }
+            database.query("SELECT COUNT(*) FROM lodgings").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(0, cursor.getInt(0))
+            }
+        }
+    }
+
+    @Test
+    fun migrate13To14_preservesExistingLodgingAndCheckInTime() {
+        val name = "migration-lodging-place"
+        helper.createDatabase(name, 13).apply {
+            execSQL(
+                """
+                INSERT INTO trip_plans (
+                    id, title, destination, startDate, endDate, description, createdAt, updatedAt, isDraft
+                ) VALUES (1, '기존 여행', '제주', '2026-11-26', '2026-11-28', '', 1, 1, 1)
+                """.trimIndent()
+            )
+            execSQL(
+                """
+                INSERT INTO lodgings (tripPlanId, name, checkIn, checkOut, address, checkInTime, note)
+                VALUES (1, '기존 숙소', '2026-11-26', '2026-11-28', '제주', '15:30', '')
+                """.trimIndent()
+            )
+            close()
+        }
+        helper.runMigrationsAndValidate(name, 14, true, DatabaseMigrations.Migration13To14).use { database ->
+            database.query("SELECT name, checkInTime, checkOutTime, googlePlaceId FROM lodgings").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals("기존 숙소", cursor.getString(0))
+                assertEquals("15:30", cursor.getString(1))
+                assertEquals(true, cursor.isNull(2))
+                assertEquals(true, cursor.isNull(3))
+            }
+        }
+    }
+
+    @Test
+    fun migrate14To15_preservesExpenseWithEmptyDescription() {
+        val name = "migration-expense-description"
+        helper.createDatabase(name, 14).apply {
+            execSQL(
+                """
+                INSERT INTO trip_plans (
+                    id, title, destination, startDate, endDate, description, createdAt, updatedAt
+                ) VALUES (1, '기존 여행', '제주', '2026-11-26', '2026-11-28', '', 1, 1)
+                """.trimIndent()
+            )
+            execSQL(
+                """
+                INSERT INTO expenses (
+                    tripPlanId, occurredDate, occurredTimeMinutes, amount, currencyCode,
+                    krwPerUnit, rateDate, convertedKrwAmount, category, createdAt
+                ) VALUES (1, '2026-11-26', 540, '12000', 'KRW', '1', '2026-11-26', '12000', 'Other', 1)
+                """.trimIndent()
+            )
+            close()
+        }
+        helper.runMigrationsAndValidate(name, 15, true, DatabaseMigrations.Migration14To15).use { database ->
+            database.query("SELECT category, amount, description FROM expenses").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals("Other", cursor.getString(0))
+                assertEquals("12000", cursor.getString(1))
+                assertEquals("", cursor.getString(2))
+            }
+        }
+    }
+
+    @Test
+    fun migrate15To16_keepsExistingTripsAndAddsPhotoTable() {
+        val name = "migration-itinerary-photos"
+        helper.createDatabase(name, 15).apply {
+            execSQL(
+                """
+                INSERT INTO trip_plans (
+                    id, title, destination, startDate, endDate, description, createdAt, updatedAt
+                ) VALUES (1, '기존 여행', '제주', '2026-11-25', '2026-11-27', '', 1, 1)
+                """.trimIndent()
+            )
+            close()
+        }
+        helper.runMigrationsAndValidate(name, 16, true, DatabaseMigrations.Migration15To16).use { database ->
+            database.query("SELECT title FROM trip_plans WHERE id = 1").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals("기존 여행", cursor.getString(0))
+            }
+            database.query("SELECT COUNT(*) FROM itinerary_photos").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals(0, cursor.getInt(0))
+            }
+        }
+    }
+
     private fun insertBudget(database: SupportSQLiteDatabase, tripPlanId: Long) {
         database.execSQL(
             """
@@ -608,5 +777,6 @@ class TripPlanDatabaseMigrationTest {
         const val TEST_DATABASE_FROM_V7 = "migration-test-from-v7"
         const val TEST_DATABASE_FROM_V8 = "migration-test-from-v8"
         const val TEST_DATABASE_FROM_V9 = "migration-test-from-v9"
+        const val TEST_DATABASE_FROM_V10 = "migration-test-from-v10"
     }
 }

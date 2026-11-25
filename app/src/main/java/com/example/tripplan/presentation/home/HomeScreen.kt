@@ -3,39 +3,46 @@ package com.example.tripplan.presentation.home
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -48,6 +55,7 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     onAddTripClick: () -> Unit = {},
     onTripClick: (Long) -> Unit = {},
+    onDraftTripClick: (Long) -> Unit = {},
     onImportFileSelected: (String) -> Unit = {},
     onSettingsClick: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
@@ -61,6 +69,7 @@ fun HomeScreen(
         modifier = modifier,
         onAddTripClick = onAddTripClick,
         onTripClick = onTripClick,
+        onDraftTripClick = onDraftTripClick,
         onImportClick = { importLauncher.launch(arrayOf("application/json", "text/json")) },
         onSettingsClick = onSettingsClick,
         onExchangeRateSelectClick = viewModel::showCurrencySelector,
@@ -70,12 +79,14 @@ fun HomeScreen(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun HomeScreenContent(
     uiState: HomeUiState,
     modifier: Modifier = Modifier,
     onAddTripClick: () -> Unit = {},
     onTripClick: (Long) -> Unit = {},
+    onDraftTripClick: (Long) -> Unit = {},
     onImportClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onExchangeRateSelectClick: () -> Unit = {},
@@ -83,6 +94,8 @@ internal fun HomeScreenContent(
     onCurrencySelectionChanged: (String, Boolean) -> Unit = { _, _ -> },
     onCurrencySelectorDismiss: () -> Unit = {},
 ) {
+    var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
+    var isTravelToolsVisible by rememberSaveable { mutableStateOf(false) }
     if (uiState.isCurrencySelectorVisible) {
         CurrencySelectorDialog(
             currencies = uiState.availableCurrencies,
@@ -91,56 +104,115 @@ internal fun HomeScreenContent(
             onDismiss = onCurrencySelectorDismiss,
         )
     }
-    LazyColumn(
-        modifier = modifier.fillMaxSize().safeDrawingPadding(),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
-    ) {
-        item {
-            Column {
-                TextButton(onClick = onSettingsClick, modifier = Modifier.align(Alignment.End)) { Text("설정") }
-                AddTripCard(onClick = onAddTripClick, onImportClick = onImportClick)
-            }
-        }
-        item {
-            ExchangeRateCard(
-                uiState = uiState,
-                onSelectClick = onExchangeRateSelectClick,
-                onRefreshClick = onExchangeRateRefreshClick,
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = { Text("Trip Plan") },
+                actions = {
+                    IconButton(onClick = { isTravelToolsVisible = true }) {
+                        Icon(
+                            imageVector = ImageVector.vectorResource(R.drawable.ic_travel_tools_24),
+                            contentDescription = "여행 도구",
+                        )
+                    }
+                    IconButton(onClick = onImportClick) {
+                        Icon(
+                            imageVector = ImageVector.vectorResource(R.drawable.ic_file_open_24),
+                            contentDescription = "여행 파일 가져오기",
+                        )
+                    }
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(
+                            imageVector = ImageVector.vectorResource(R.drawable.ic_settings_24),
+                            contentDescription = "설정",
+                        )
+                    }
+                },
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = onAddTripClick,
+            ) {
+                Icon(
+                    imageVector = ImageVector.vectorResource(R.drawable.ic_add_24),
+                    contentDescription = "새 여행 추가",
+                )
+            }
+        },
+    ) { innerPadding ->
+        val allTrips = uiState.trips.ifEmpty {
+            uiState.ongoingTrips + uiState.upcomingTrips + uiState.pastTrips
         }
-        item { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant) }
+        val tabs = HomeTripTab.entries
+        val selectedTab = tabs[selectedTabIndex]
+        val displayedTrips = allTrips.filter { it.section == selectedTab.section }
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(innerPadding),
+            contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 104.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
+            item {
+                PrimaryTabRow(selectedTabIndex = selectedTabIndex) {
+                    tabs.forEachIndexed { index, tab ->
+                        val count = allTrips.count { it.section == tab.section }
+                        Tab(
+                            selected = selectedTabIndex == index,
+                            onClick = { selectedTabIndex = index },
+                            text = { Text(if (count == 0) tab.label else "${tab.label} $count") },
+                        )
+                    }
+                }
+            }
+            when {
+                uiState.isLoading -> item {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
 
-        when {
-            uiState.isLoading -> item {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator()
+                uiState.isLoadFailed -> item {
+                    Text(
+                        text = "여행 목록을 불러오지 못했습니다. 앱을 다시 실행해 주세요.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+
+                else -> {
+                    if (displayedTrips.isEmpty()) {
+                        item { HomeEmptyState(message = selectedTab.emptyMessage) }
+                    } else {
+                        tripSection(
+                            trips = displayedTrips,
+                            onTripClick = onTripClick,
+                            onDraftTripClick = onDraftTripClick,
+                        )
+                    }
                 }
             }
 
-            uiState.isLoadFailed -> item {
-                Text(
-                    text = "여행 목록을 불러오지 못했습니다. 앱을 다시 실행해 주세요.",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-
-            else -> {
-                val trips = uiState.trips.ifEmpty {
-                    uiState.ongoingTrips + uiState.upcomingTrips + uiState.pastTrips
-                }
-                tripSection(
-                    title = "최근 여행",
-                    trips = trips,
-                    onTripClick = onTripClick,
-                    emptyMessage = "등록된 여행이 없습니다.",
-                )
-            }
         }
+    }
+    if (isTravelToolsVisible) {
+        AlertDialog(
+            onDismissRequest = { isTravelToolsVisible = false },
+            title = { Text("여행 도구") },
+            text = {
+                ExchangeRateCard(
+                    uiState = uiState,
+                    onSelectClick = onExchangeRateSelectClick,
+                    onRefreshClick = onExchangeRateRefreshClick,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { isTravelToolsVisible = false }) { Text("닫기") }
+            },
+        )
     }
 }
 
@@ -273,69 +345,46 @@ private fun CurrencySelectorDialog(
 }
 
 private fun LazyListScope.tripSection(
-    title: String,
     trips: List<HomeTripUiModel>,
     onTripClick: (Long) -> Unit,
-    emptyMessage: String? = null,
+    onDraftTripClick: (Long) -> Unit,
 ) {
-    item { Text(text = title, style = MaterialTheme.typography.titleMedium) }
-    if (trips.isEmpty()) {
-        if (emptyMessage != null) {
-            item {
-                Text(
-                    text = emptyMessage,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    } else {
-        items(trips, key = { it.id }) { trip ->
-            TripCard(trip = trip, onClick = { onTripClick(trip.id) })
-        }
+    items(trips, key = { it.id }) { trip ->
+        TripCard(
+            trip = trip,
+            onClick = {
+                if (trip.section == HomeTripSection.Draft) onDraftTripClick(trip.id)
+                else onTripClick(trip.id)
+            },
+        )
     }
 }
 
 @Composable
-private fun AddTripCard(
-    onClick: () -> Unit,
-    onImportClick: () -> Unit,
+private fun HomeEmptyState(
+    message: String,
     modifier: Modifier = Modifier,
 ) {
-    OutlinedCard(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
+    Box(
+        modifier = modifier.fillMaxWidth().padding(vertical = 48.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Box(
-                modifier = Modifier.size(48.dp).clip(MaterialTheme.shapes.small)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = ImageVector.vectorResource(R.drawable.ic_add_24),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-            }
-            Text("새 여행 추가", style = MaterialTheme.typography.titleMedium)
-            Text(
-                "날짜별 일정, 장소, 메모를 담을 여행 계획을 시작합니다.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            TextButton(
-                onClick = onImportClick,
-                modifier = Modifier.align(Alignment.End),
-            ) { Text("여행 파일 가져오기") }
-        }
+        Text(
+            message,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
+}
+
+private enum class HomeTripTab(
+    val label: String,
+    val section: HomeTripSection,
+    val emptyMessage: String,
+) {
+    Current("내 여행", HomeTripSection.Current, "예정되었거나 진행 중인 여행이 없습니다."),
+    Draft("작성 중", HomeTripSection.Draft, "작성 중인 여행 계획이 없습니다."),
+    Past("지난 여행", HomeTripSection.Past, "지난 여행이 없습니다."),
 }
 
 @Composable
@@ -408,7 +457,13 @@ private fun HomeScreenWithTripsPreview() {
                 isLoading = false,
                 ongoingTrips = listOf(previewTrip),
                 upcomingTrips = listOf(previewTrip.copy(id = 2L, title = "부산 주말 여행")),
-                pastTrips = listOf(previewTrip.copy(id = 3L, title = "지난 서울 여행")),
+                pastTrips = listOf(
+                    previewTrip.copy(
+                        id = 3L,
+                        title = "지난 서울 여행",
+                        section = HomeTripSection.Past,
+                    )
+                ),
                 exchangeRates = previewExchangeRates,
                 availableCurrencies = previewExchangeRates,
                 selectedCurrencyUnits = previewExchangeRates.mapTo(linkedSetOf()) { it.currencyCode },

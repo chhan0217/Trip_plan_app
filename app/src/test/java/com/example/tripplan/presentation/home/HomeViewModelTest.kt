@@ -46,6 +46,7 @@ class HomeViewModelTest {
                     trip(2L, "다음 여행", "2026-12-01", "2026-12-03"),
                     trip(3L, "가까운 여행", "2026-11-20", "2026-11-21"),
                     trip(4L, "지난 여행", "2026-10-01", "2026-10-03"),
+                    trip(5L, "작성 중", "2026-12-10", "2026-12-12", isDraft = true),
                 )
             )
         }
@@ -55,9 +56,14 @@ class HomeViewModelTest {
 
         val state = viewModel.uiState.value
         assertFalse(state.isLoading)
-        assertEquals(listOf("진행 중", "다음 여행", "가까운 여행", "지난 여행"), state.trips.map { it.title })
+        assertEquals(
+            listOf("진행 중", "다음 여행", "가까운 여행", "지난 여행", "작성 중"),
+            state.trips.map { it.title },
+        )
         assertEquals("여행 2일차", state.trips.first().statusText)
         assertEquals("2026.11.08 - 2026.11.10", state.trips.first().dateText)
+        assertEquals(HomeTripSection.Past, state.trips.first { it.id == 4L }.section)
+        assertEquals(HomeTripSection.Draft, state.trips.first { it.id == 5L }.section)
     }
 
     @Test
@@ -156,7 +162,13 @@ class HomeViewModelTest {
         )
     }
 
-    private fun trip(id: Long, title: String, start: String, end: String) = TripPlan(
+    private fun trip(
+        id: Long,
+        title: String,
+        start: String,
+        end: String,
+        isDraft: Boolean = false,
+    ) = TripPlan(
         id = id,
         title = title,
         destination = "제주",
@@ -165,6 +177,7 @@ class HomeViewModelTest {
         description = "",
         createdAt = Instant.EPOCH,
         updatedAt = Instant.EPOCH,
+        isDraft = isDraft,
     )
 
     private companion object {

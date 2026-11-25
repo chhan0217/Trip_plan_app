@@ -38,6 +38,19 @@ interface TripPlanDao {
         updatedAt: Long,
     ): Int
 
+    @Query(
+        """
+        UPDATE trip_plans
+        SET isDraft = :isDraft, updatedAt = :updatedAt
+        WHERE id = :tripPlanId
+        """
+    )
+    suspend fun updateTripDraftStatus(
+        tripPlanId: Long,
+        isDraft: Boolean,
+        updatedAt: Long,
+    ): Int
+
     @Query("DELETE FROM trip_plans WHERE id = :tripPlanId")
     suspend fun deleteTripPlan(tripPlanId: Long)
 

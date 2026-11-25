@@ -53,6 +53,16 @@ class FakeTripPlanRepository : TripPlanRepository {
         return true
     }
 
+    override suspend fun updateTripDraftStatus(
+        tripPlanId: Long,
+        isDraft: Boolean,
+        updatedAt: Instant,
+    ): Boolean {
+        val existing = trips.value.firstOrNull { it.id == tripPlanId } ?: return false
+        updateTripPlan(existing.copy(isDraft = isDraft, updatedAt = updatedAt))
+        return true
+    }
+
     override suspend fun updateTripPlanAndDeleteItineraryItems(
         tripPlan: TripPlan,
         itemIds: List<Long>,

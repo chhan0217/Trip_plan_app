@@ -97,6 +97,12 @@ class DefaultTripPlanRepositoryTest {
             return completionUpdateCount
         }
 
+        override suspend fun updateTripDraftStatus(
+            tripPlanId: Long,
+            isDraft: Boolean,
+            updatedAt: Long,
+        ): Int = 1
+
         override suspend fun deleteTripPlan(tripPlanId: Long) = Unit
 
         override suspend fun deleteItineraryItemsByIds(itemIds: List<Long>) = Unit

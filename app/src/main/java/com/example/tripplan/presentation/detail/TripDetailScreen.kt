@@ -18,9 +18,12 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -46,6 +49,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -60,6 +65,14 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.tripplan.R
+import com.example.tripplan.presentation.itineraryphoto.ItineraryPhotoAddDialog
+import com.example.tripplan.presentation.itineraryphoto.ItineraryPhotoStrip
+import com.example.tripplan.presentation.itineraryphoto.ItineraryPhotoViewer
+import com.example.tripplan.presentation.itineraryphoto.ItineraryPhotoViewModel
+import com.example.tripplan.presentation.lodging.LodgingDayInfo
+import com.example.tripplan.presentation.lodging.LodgingSection
+import com.example.tripplan.presentation.lodging.LodgingUiModel
+import com.example.tripplan.presentation.lodging.LodgingViewModel
 import com.example.tripplan.domain.rule.BudgetCalculator
 import com.example.tripplan.domain.model.ExpenseCategory
 import com.example.tripplan.domain.model.TripMoneyDisplayCurrency
@@ -80,46 +93,102 @@ fun TripDetailScreen(
     onEditItinerary: (Long) -> Unit = {},
     onExportTrip: () -> Unit = {},
     onPackingClick: () -> Unit = {},
-    onCopyTrip: () -> Unit = {},
-    onPlacesClick: () -> Unit = {},
-    onItineraryMapClick: () -> Unit = {},
+    onItineraryMapClick: (Boolean) -> Unit = {},
     viewModel: TripDetailViewModel = hiltViewModel(key = "trip-detail-$tripPlanId"),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val photoViewModel: ItineraryPhotoViewModel = hiltViewModel(key = "itinerary-photos-$tripPlanId")
+    val photoState by photoViewModel.uiState.collectAsState()
+    var photoAddItineraryId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var galleryItineraryId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var photoStartIndex by rememberSaveable { mutableStateOf(0) }
+    LaunchedEffect(photoViewModel, tripPlanId) { photoViewModel.load(tripPlanId) }
+    val lodgingViewModel: LodgingViewModel = hiltViewModel(key = "lodging-viewer-$tripPlanId")
+    val lodgingState by lodgingViewModel.uiState.collectAsState()
+    LaunchedEffect(lodgingViewModel, tripPlanId) { lodgingViewModel.load(tripPlanId, editable = false) }
     LaunchedEffect(viewModel, tripPlanId) { viewModel.load(tripPlanId) }
 
-    TripDetailScreenContent(
-        uiState = uiState,
-        modifier = modifier,
-        onBackClick = onBackClick,
-        onEditTrip = onEditTrip,
-        onDaySelected = viewModel::onDaySelected,
-        onAddItinerary = onAddItinerary,
-        onEditItinerary = onEditItinerary,
-        onExportTrip = onExportTrip,
-        onPackingClick = onPackingClick,
-        onCopyTrip = onCopyTrip,
-        onPlacesClick = onPlacesClick,
-        onItineraryMapClick = onItineraryMapClick,
-        onMoveUp = viewModel::onMoveUp,
-        onMoveDown = viewModel::onMoveDown,
-        onCompletionRequest = viewModel::onCompletionRequest,
-        onCompletionConfirm = viewModel::onCompletionConfirm,
-        onCompletionDismiss = viewModel::onCompletionDismiss,
-        onCreateBudget = viewModel::createBudget,
-        onAddBudget = viewModel::addBudget,
-        onSaveEstimatedCost = viewModel::saveItineraryEstimatedCost,
-        onExpenseRequest = viewModel::onExpenseRequest,
-        onItineraryExpenseRequest = viewModel::onItineraryExpenseRequest,
-        onExpenseDismiss = viewModel::onExpenseDismiss,
-        onRecordExpense = viewModel::recordExpense,
-        onExpenseEditRequest = viewModel::onExpenseEditRequest,
-        onExpenseEditDismiss = viewModel::onExpenseEditDismiss,
-        onUpdateExpense = viewModel::updateExpense,
-        onExpenseDeleteRequest = viewModel::onExpenseDeleteRequest,
-        onExpenseDeleteDismiss = viewModel::onExpenseDeleteDismiss,
-        onDeleteExpense = viewModel::deleteExpense,
-        onMoneyDisplayCurrencyChange = viewModel::setMoneyDisplayCurrency,
+    TravelViewerTheme {
+        TripDetailScreenContent(
+            uiState = uiState,
+            lodgings = lodgingState.lodgings,
+            photoIdsByItinerary = photoState.photoIdsByItinerary,
+            readPhoto = photoViewModel::readPhoto,
+            onAddPhotos = { itineraryId ->
+                photoViewModel.clearError()
+                photoAddItineraryId = itineraryId
+            },
+            onViewPhotos = { itineraryId, index ->
+                photoStartIndex = index
+                galleryItineraryId = itineraryId
+            },
+            modifier = modifier,
+            onBackClick = onBackClick,
+            onEditTrip = onEditTrip,
+            onDaySelected = viewModel::onDaySelected,
+            onAddItinerary = onAddItinerary,
+            onEditItinerary = onEditItinerary,
+            onExportTrip = onExportTrip,
+            onPackingClick = onPackingClick,
+            onItineraryMapClick = onItineraryMapClick,
+            onMoveUp = viewModel::onMoveUp,
+            onMoveDown = viewModel::onMoveDown,
+            onCompletionRequest = viewModel::onCompletionRequest,
+            onCompletionConfirm = viewModel::onCompletionConfirm,
+            onCompletionDismiss = viewModel::onCompletionDismiss,
+            onCreateBudget = viewModel::createBudget,
+            onAddBudget = viewModel::addBudget,
+            onSaveEstimatedCost = viewModel::saveItineraryEstimatedCost,
+            onExpenseRequest = viewModel::onExpenseRequest,
+            onItineraryExpenseRequest = viewModel::onItineraryExpenseRequest,
+            onExpenseDismiss = viewModel::onExpenseDismiss,
+            onRecordExpense = viewModel::recordExpense,
+            onExpenseEditRequest = viewModel::onExpenseEditRequest,
+            onExpenseEditDismiss = viewModel::onExpenseEditDismiss,
+            onUpdateExpense = viewModel::updateExpense,
+            onExpenseDeleteRequest = viewModel::onExpenseDeleteRequest,
+            onExpenseDeleteDismiss = viewModel::onExpenseDeleteDismiss,
+            onDeleteExpense = viewModel::deleteExpense,
+            onMoneyDisplayCurrencyChange = viewModel::setMoneyDisplayCurrency,
+        )
+        ItineraryPhotoAddDialog(
+            itineraryId = photoAddItineraryId,
+            canAdd = uiState.canAddItineraryPhotos,
+            state = photoState,
+            viewModel = photoViewModel,
+            onDismiss = { photoAddItineraryId = null },
+        )
+        galleryItineraryId?.let { itineraryId ->
+            ItineraryPhotoViewer(
+                photoIds = photoState.photoIdsByItinerary[itineraryId].orEmpty(),
+                initialIndex = photoStartIndex,
+                readPhoto = photoViewModel::readPhoto,
+                onDismiss = { galleryItineraryId = null },
+            )
+        }
+    }
+}
+
+@Composable
+private fun TravelViewerTheme(content: @Composable () -> Unit) {
+    MaterialTheme(
+        colorScheme = MaterialTheme.colorScheme.copy(
+            primary = Color(0xFF12635C),
+            onPrimary = Color.White,
+            primaryContainer = Color(0xFFDDEEE9),
+            onPrimaryContainer = Color(0xFF17443E),
+            background = Color(0xFFFAF7F0),
+            onBackground = Color(0xFF202C29),
+            surface = Color(0xFFFFFDF8),
+            onSurface = Color(0xFF202C29),
+            surfaceVariant = Color(0xFFE9E9E0),
+            onSurfaceVariant = Color(0xFF465650),
+            outline = Color(0xFF75837B),
+            outlineVariant = Color(0xFFD3DBD2),
+            secondaryContainer = Color(0xFFDDEEE9),
+            onSecondaryContainer = Color(0xFF17443E),
+        ),
+        content = content,
     )
 }
 
@@ -127,6 +196,11 @@ fun TripDetailScreen(
 internal fun TripDetailScreenContent(
     uiState: TripDetailUiState,
     modifier: Modifier = Modifier,
+    lodgings: List<LodgingUiModel> = emptyList(),
+    photoIdsByItinerary: Map<Long, List<Long>> = emptyMap(),
+    readPhoto: suspend (Long) -> ByteArray? = { null },
+    onAddPhotos: (Long) -> Unit = {},
+    onViewPhotos: (Long, Int) -> Unit = { _, _ -> },
     onBackClick: () -> Unit = {},
     onEditTrip: () -> Unit = {},
     onDaySelected: (LocalDate) -> Unit = {},
@@ -134,9 +208,7 @@ internal fun TripDetailScreenContent(
     onEditItinerary: (Long) -> Unit = {},
     onExportTrip: () -> Unit = {},
     onPackingClick: () -> Unit = {},
-    onCopyTrip: () -> Unit = {},
-    onPlacesClick: () -> Unit = {},
-    onItineraryMapClick: () -> Unit = {},
+    onItineraryMapClick: (Boolean) -> Unit = {},
     onMoveUp: (Long) -> Unit = {},
     onMoveDown: (Long) -> Unit = {},
     onCompletionRequest: () -> Unit = {},
@@ -148,15 +220,16 @@ internal fun TripDetailScreenContent(
     onExpenseRequest: () -> Unit = {},
     onItineraryExpenseRequest: (Long) -> Unit = {},
     onExpenseDismiss: () -> Unit = {},
-    onRecordExpense: (String, ExpenseCategory, String) -> Unit = { _, _, _ -> },
+    onRecordExpense: (String, ExpenseCategory, String, String) -> Unit = { _, _, _, _ -> },
     onExpenseEditRequest: (Long) -> Unit = {},
     onExpenseEditDismiss: () -> Unit = {},
-    onUpdateExpense: (String, ExpenseCategory, String, String) -> Unit = { _, _, _, _ -> },
+    onUpdateExpense: (String, ExpenseCategory, String, String, String) -> Unit = { _, _, _, _, _ -> },
     onExpenseDeleteRequest: () -> Unit = {},
     onExpenseDeleteDismiss: () -> Unit = {},
     onDeleteExpense: () -> Unit = {},
     onMoneyDisplayCurrencyChange: (TripMoneyDisplayCurrency) -> Unit = {},
 ) {
+    val isReadOnly = uiState.isTripEnded || uiState.isCompleted
     var isExpenseSummaryVisible by rememberSaveable { mutableStateOf(false) }
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -166,6 +239,7 @@ internal fun TripDetailScreenContent(
             modifier = Modifier.fillMaxSize().padding(innerPadding),
         ) {
             DetailHeader(
+                showActions = !isReadOnly && !uiState.isLoading && !uiState.isNotFound && !uiState.isLoadFailed,
                 onBackClick = onBackClick,
                 onEditTrip = onEditTrip,
                 onExportTrip = onExportTrip,
@@ -181,6 +255,12 @@ internal fun TripDetailScreenContent(
                 }
                 else -> DetailContent(
                     uiState = uiState,
+                    isReadOnly = isReadOnly,
+                    lodgings = lodgings,
+                    photoIdsByItinerary = photoIdsByItinerary,
+                    readPhoto = readPhoto,
+                    onAddPhotos = onAddPhotos,
+                    onViewPhotos = onViewPhotos,
                     onDaySelected = onDaySelected,
                     onAddItinerary = onAddItinerary,
                     onEditItinerary = onEditItinerary,
@@ -188,8 +268,6 @@ internal fun TripDetailScreenContent(
                     onMoveDown = onMoveDown,
                     onCompletionRequest = onCompletionRequest,
                     onPackingClick = onPackingClick,
-                    onCopyTrip = onCopyTrip,
-                    onPlacesClick = onPlacesClick,
                     onItineraryMapClick = onItineraryMapClick,
                     onCreateBudget = onCreateBudget,
                     onAddBudget = onAddBudget,
@@ -203,7 +281,7 @@ internal fun TripDetailScreenContent(
             }
         }
     }
-    if (uiState.isCompletionConfirmationVisible) {
+    if (!isReadOnly && uiState.isCompletionConfirmationVisible) {
         AlertDialog(
             onDismissRequest = onCompletionDismiss,
             title = { Text(if (uiState.isCompleted) "완료 취소" else "여행 완료") },
@@ -214,7 +292,7 @@ internal fun TripDetailScreenContent(
             dismissButton = { TextButton(onClick = onCompletionDismiss) { Text("취소") } },
         )
     }
-    if (uiState.isExpenseDialogVisible) {
+    if (!isReadOnly && uiState.isExpenseDialogVisible) {
         ExpenseInputDialog(
             currencyCode = uiState.tripCurrencyCode,
             occurredAtText = uiState.expenseOccurredAtText,
@@ -224,7 +302,7 @@ internal fun TripDetailScreenContent(
             onSave = onRecordExpense,
         )
     }
-    uiState.editingExpense?.let { editor ->
+    uiState.editingExpense?.takeUnless { isReadOnly }?.let { editor ->
         ExpenseEditDialog(
             editor = editor,
             tripCurrencyCode = uiState.tripCurrencyCode,
@@ -234,7 +312,7 @@ internal fun TripDetailScreenContent(
             onDeleteRequest = onExpenseDeleteRequest,
         )
     }
-    if (uiState.isExpenseDeleteConfirmationVisible) {
+    if (!isReadOnly && uiState.isExpenseDeleteConfirmationVisible) {
         AlertDialog(
             onDismissRequest = onExpenseDeleteDismiss,
             title = { Text("지출 삭제") },
@@ -247,14 +325,18 @@ internal fun TripDetailScreenContent(
         ExpenseSummaryDialog(
             summary = uiState.expenseSummary,
             displayCurrency = uiState.moneyDisplayCurrency,
-            isTripEnded = uiState.isTripEnded,
+            isTripEnded = isReadOnly,
             onDismiss = { isExpenseSummaryVisible = false },
         )
     }
 }
 
+private val TripDetailUiState.canAddItineraryPhotos: Boolean
+    get() = isTripOngoing && !isTripEnded && !isCompleted && !isDraft
+
 @Composable
 private fun DetailHeader(
+    showActions: Boolean,
     onBackClick: () -> Unit,
     onEditTrip: () -> Unit,
     onExportTrip: () -> Unit,
@@ -269,10 +351,12 @@ private fun DetailHeader(
                 contentDescription = "뒤로가기",
             )
         }
-        Text("여행 상세", style = MaterialTheme.typography.titleLarge)
+        Text("여행 보기", style = MaterialTheme.typography.titleLarge)
         Box(Modifier.weight(1f))
-        TextButton(onClick = onExportTrip) { Text("파일 공유") }
-        TextButton(onClick = onEditTrip) { Text("여행 수정") }
+        if (showActions) {
+            TextButton(onClick = onExportTrip) { Text("파일 공유") }
+            TextButton(onClick = onEditTrip) { Text("계획 수정") }
+        }
     }
 }
 
@@ -287,6 +371,12 @@ private fun CenterMessage(content: @Composable () -> Unit) {
 @Composable
 private fun DetailContent(
     uiState: TripDetailUiState,
+    isReadOnly: Boolean,
+    lodgings: List<LodgingUiModel>,
+    photoIdsByItinerary: Map<Long, List<Long>>,
+    readPhoto: suspend (Long) -> ByteArray?,
+    onAddPhotos: (Long) -> Unit,
+    onViewPhotos: (Long, Int) -> Unit,
     onDaySelected: (LocalDate) -> Unit,
     onAddItinerary: (LocalDate) -> Unit,
     onEditItinerary: (Long) -> Unit,
@@ -294,9 +384,7 @@ private fun DetailContent(
     onMoveDown: (Long) -> Unit,
     onCompletionRequest: () -> Unit,
     onPackingClick: () -> Unit,
-    onCopyTrip: () -> Unit,
-    onPlacesClick: () -> Unit,
-    onItineraryMapClick: () -> Unit,
+    onItineraryMapClick: (Boolean) -> Unit,
     onCreateBudget: (String) -> Unit,
     onAddBudget: (String) -> Unit,
     onSaveEstimatedCost: (Long, String, String, String) -> Unit,
@@ -315,61 +403,12 @@ private fun DetailContent(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Text(uiState.title, style = MaterialTheme.typography.headlineSmall)
-                if (uiState.statusText.isNotBlank()) {
-                    Text(
-                        uiState.statusText,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-                Text(
-                    uiState.dateText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (uiState.destination.isNotBlank()) {
-                    Text(uiState.destination, style = MaterialTheme.typography.bodyLarge)
-                }
-                if (uiState.description.isNotBlank()) {
-                    Text(
-                        uiState.description,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                TextButton(
-                    onClick = onCompletionRequest,
-                    enabled = !uiState.isCompletionSaving,
-                ) { Text(if (uiState.isCompleted) "완료 취소" else "여행 완료") }
-                Row {
-                    TextButton(onClick = onPackingClick) { Text("준비물") }
-                    TextButton(onClick = onCopyTrip) { Text("여행 복사") }
-                    TextButton(onClick = onPlacesClick) { Text("장소") }
-                }
-            }
-        }
-        item {
-            BudgetOverviewCard(
-                budget = uiState.budget,
-                tripCurrencyCode = uiState.tripCurrencyCode,
-                inputRate = uiState.budgetInputRate,
-                displayCurrency = uiState.moneyDisplayCurrency,
-                modifier = Modifier.padding(horizontal = 20.dp),
-                onCreateBudget = onCreateBudget,
-                onAddBudget = onAddBudget,
-                onDisplayCurrencyChange = onMoneyDisplayCurrencyChange,
+            TripOverview(
+                uiState = uiState,
+                canManage = !isReadOnly && !uiState.isDraft,
+                onCompletionRequest = onCompletionRequest,
+                onPackingClick = onPackingClick,
             )
-        }
-        item {
-            OutlinedButton(
-                onClick = onExpenseSummaryRequest,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-            ) { Text("지출 현황 보기") }
         }
         uiState.mutationMessage?.let { message ->
             item {
@@ -381,7 +420,9 @@ private fun DetailContent(
             }
         }
         item {
+            val selectedIndex = uiState.days.indexOfFirst { it.date == uiState.selectedDate }
             LazyRow(
+                state = rememberLazyListState(initialFirstVisibleItemIndex = (selectedIndex - 1).coerceAtLeast(0)),
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp),
@@ -400,41 +441,49 @@ private fun DetailContent(
                 }
             }
         }
-        item {
-            OutlinedButton(
-                onClick = onItineraryMapClick,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-            ) { Text("일정 지도에서 보기") }
+        if (lodgings.isNotEmpty()) {
+            item { LodgingDayInfo(lodgings, uiState.selectedDate, Modifier.padding(horizontal = 20.dp)) }
         }
         item {
-            OutlinedCard(
+            Column(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("1일 사용금액", style = MaterialTheme.typography.labelLarge)
-                    Text(
-                        if (uiState.moneyDisplayCurrency == TripMoneyDisplayCurrency.KRW) {
-                            uiState.selectedDayActualKrwText
-                        } else {
-                            uiState.selectedDayActualLocalText
-                        },
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("일정", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
+                    TextButton(onClick = { onItineraryMapClick(isReadOnly) }) { Text("일정 지도에서 보기") }
                 }
-            }
-        }
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                TextButton(onClick = onExpenseRequest) { Text("지출 추가") }
-                TextButton(
-                    onClick = { uiState.selectedDate?.let(onAddItinerary) },
-                    enabled = uiState.selectedDate != null,
-                ) { Text("일정 추가") }
+                if (!uiState.isDraft) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("1일 사용금액", style = MaterialTheme.typography.labelMedium)
+                        Text(
+                            if (uiState.moneyDisplayCurrency == TripMoneyDisplayCurrency.KRW) {
+                                uiState.selectedDayActualKrwText
+                            } else {
+                                uiState.selectedDayActualLocalText
+                            },
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+                if (!isReadOnly && !uiState.isDraft) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                    ) {
+                        TextButton(onClick = onExpenseRequest) { Text("지출 추가") }
+                        uiState.selectedDate?.let { date ->
+                            OutlinedButton(onClick = { onAddItinerary(date) }) { Text("일정 추가") }
+                        }
+                    }
+                }
             }
         }
         if (uiState.isMutationFailed) {
@@ -456,29 +505,125 @@ private fun DetailContent(
                 )
             }
         } else {
-            items(timelineRows, key = { it.key }) { row ->
-                when (row) {
-                    is TimelineRow.Schedule -> ItineraryCard(
-                        item = row.item,
-                        modifier = Modifier.padding(horizontal = 20.dp),
-                        onClick = { onEditItinerary(row.item.id) },
-                        onMoveUp = { onMoveUp(row.item.id) },
-                        onMoveDown = { onMoveDown(row.item.id) },
-                        budget = uiState.budget,
-                        displayCurrency = uiState.moneyDisplayCurrency,
-                        onSaveEstimatedCost = onSaveEstimatedCost,
-                        onAddExpense = { onItineraryExpenseRequest(row.item.id) },
-                        onEditExpense = onExpenseEditRequest,
-                    )
-                    is TimelineRow.ExpenseItem -> StandaloneExpenseCard(
-                        expense = row.expense,
-                        modifier = Modifier.padding(horizontal = 20.dp),
-                        onClick = { onExpenseEditRequest(row.expense.id) },
-                    )
+            itemsIndexed(timelineRows, key = { _, row -> row.key }) { index, row ->
+                val time = when (row) {
+                    is TimelineRow.Schedule -> row.item.timeText
+                    is TimelineRow.ExpenseItem -> row.expense.timeText
+                }
+                TripTimelineItem(time = time, hasPrevious = index > 0, hasNext = index < timelineRows.lastIndex) {
+                    when (row) {
+                        is TimelineRow.Schedule -> ItineraryCard(
+                            item = row.item,
+                            isReadOnly = isReadOnly,
+                            displayCurrency = uiState.moneyDisplayCurrency,
+                            onAddExpense = { onItineraryExpenseRequest(row.item.id) },
+                            canAddPhotos = uiState.canAddItineraryPhotos,
+                            photoIds = photoIdsByItinerary[row.item.id].orEmpty(),
+                            readPhoto = readPhoto,
+                            onAddPhotos = { onAddPhotos(row.item.id) },
+                            onViewPhotos = { photoIndex -> onViewPhotos(row.item.id, photoIndex) },
+                            onEditExpense = onExpenseEditRequest,
+                        )
+                        is TimelineRow.ExpenseItem -> StandaloneExpenseCard(
+                            expense = row.expense,
+                            isReadOnly = isReadOnly,
+                            onClick = { onExpenseEditRequest(row.expense.id) },
+                        )
+                    }
                 }
             }
         }
+        if (lodgings.isNotEmpty()) {
+            item { LodgingSection(lodgings, Modifier.padding(horizontal = 20.dp)) }
+        }
+        if (!uiState.isDraft) {
+            item {
+                BudgetOverviewCard(
+                    budget = uiState.budget,
+                    isReadOnly = isReadOnly,
+                    tripCurrencyCode = uiState.tripCurrencyCode,
+                    inputRate = uiState.budgetInputRate,
+                    displayCurrency = uiState.moneyDisplayCurrency,
+                    modifier = Modifier.padding(horizontal = 20.dp),
+                    onCreateBudget = onCreateBudget,
+                    onAddBudget = onAddBudget,
+                    onDisplayCurrencyChange = onMoneyDisplayCurrencyChange,
+                )
+            }
+            item {
+                OutlinedButton(
+                    onClick = onExpenseSummaryRequest,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                ) { Text("지출 현황 보기") }
+            }
+        }
         item { Box(Modifier.padding(bottom = 12.dp)) }
+    }
+}
+
+@Composable
+private fun TripOverview(
+    uiState: TripDetailUiState,
+    canManage: Boolean,
+    onCompletionRequest: () -> Unit,
+    onPackingClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+    ) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (uiState.statusText.isNotBlank()) {
+                Text(uiState.statusText, style = MaterialTheme.typography.labelLarge)
+            }
+            Text(uiState.title, style = MaterialTheme.typography.headlineSmall)
+            Text(uiState.dateText, style = MaterialTheme.typography.bodyMedium)
+            if (uiState.destination.isNotBlank()) Text(uiState.destination, style = MaterialTheme.typography.bodyMedium)
+            if (uiState.description.isNotBlank()) Text(uiState.description, style = MaterialTheme.typography.bodySmall)
+            if (canManage) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = onPackingClick) { Text("준비물") }
+                    TextButton(onClick = onCompletionRequest, enabled = !uiState.isCompletionSaving) { Text("여행 완료") }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TripTimelineItem(
+    time: String,
+    hasPrevious: Boolean,
+    hasNext: Boolean,
+    content: @Composable () -> Unit,
+) {
+    val lineColor = MaterialTheme.colorScheme.outlineVariant
+    val dotColor = MaterialTheme.colorScheme.primary
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).drawBehind {
+            val x = 59.dp.toPx()
+            val y = 25.dp.toPx()
+            if (hasPrevious) drawLine(lineColor, Offset(x, -8.dp.toPx()), Offset(x, y), strokeWidth = 1.dp.toPx())
+            if (hasNext) drawLine(lineColor, Offset(x, y), Offset(x, size.height + 8.dp.toPx()), strokeWidth = 1.dp.toPx())
+            drawCircle(dotColor, radius = 4.dp.toPx(), center = Offset(x, y))
+        },
+    ) {
+        Column(Modifier.width(51.dp).padding(top = 16.dp, end = 3.dp)) {
+            val mainTime = time.substringBefore(" - ")
+            val endTime = time.substringAfter(" - ", missingDelimiterValue = "")
+            Text(
+                mainTime.ifBlank { "미정" },
+                color = if (mainTime.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant else dotColor,
+                style = MaterialTheme.typography.labelMedium,
+            )
+            if (endTime.isNotBlank()) {
+                Text(endTime, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+            }
+        }
+        Spacer(Modifier.width(17.dp))
+        Box(Modifier.weight(1f)) { content() }
     }
 }
 
@@ -634,6 +779,7 @@ private fun categoryColor(category: ExpenseCategory): Color = when (category) {
 
 @Composable
 private fun BudgetOverviewCard(
+    isReadOnly: Boolean,
     budget: BudgetSummaryUiModel?,
     tripCurrencyCode: String,
     inputRate: BudgetInputRate?,
@@ -669,9 +815,13 @@ private fun BudgetOverviewCard(
                 }
             }
             if (budget == null) {
-                Text("원화로 입력하면 여행 국가 통화인 $tripCurrencyCode 금액을 자동 계산합니다.")
-                TextButton(onClick = { isFormVisible = !isFormVisible }) {
-                    Text(if (isFormVisible) "예산 설정 접기" else "예산 설정")
+                if (isReadOnly) {
+                    Text("등록된 예산이 없습니다.")
+                } else {
+                    Text("원화로 입력하면 여행 국가 통화인 $tripCurrencyCode 금액을 자동 계산합니다.")
+                    TextButton(onClick = { isFormVisible = !isFormVisible }) {
+                        Text(if (isFormVisible) "예산 설정 접기" else "예산 설정")
+                    }
                 }
             } else {
                 Text(
@@ -710,11 +860,13 @@ private fun BudgetOverviewCard(
                         MaterialTheme.colorScheme.onSurface
                     },
                 )
-                TextButton(onClick = {
-                    isFormVisible = !isFormVisible
-                }) { Text(if (isFormVisible) "추가 예산 접기" else "추가 예산") }
+                if (!isReadOnly) {
+                    TextButton(onClick = {
+                        isFormVisible = !isFormVisible
+                    }) { Text(if (isFormVisible) "추가 예산 접기" else "추가 예산") }
+                }
             }
-            if (isFormVisible) {
+            if (!isReadOnly && isFormVisible) {
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { amount = it.formatMoneyInput() },
@@ -759,29 +911,19 @@ private fun BudgetOverviewCard(
 
 @Composable
 private fun ItineraryCard(
+    isReadOnly: Boolean,
     item: ItineraryItemUiModel,
     modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-    onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit,
-    budget: BudgetSummaryUiModel?,
     displayCurrency: TripMoneyDisplayCurrency,
-    onSaveEstimatedCost: (Long, String, String, String) -> Unit,
     onAddExpense: () -> Unit,
     onEditExpense: (Long) -> Unit,
+    canAddPhotos: Boolean,
+    photoIds: List<Long>,
+    readPhoto: suspend (Long) -> ByteArray?,
+    onAddPhotos: () -> Unit,
+    onViewPhotos: (Int) -> Unit,
 ) {
-    var isCostExpanded by rememberSaveable(item.id) { mutableStateOf(false) }
-    var estimatedAmount by rememberSaveable(item.id, item.estimatedCost?.amountText) {
-        mutableStateOf(item.estimatedCost?.amountText.orEmpty().formatMoneyInput())
-    }
-    var estimatedCurrency by rememberSaveable(item.id, item.estimatedCost?.currencyCode) {
-        mutableStateOf(item.estimatedCost?.currencyCode ?: budget?.currencyCode.orEmpty())
-    }
-    var estimatedRate by rememberSaveable(item.id, item.estimatedCost?.rateText) {
-        mutableStateOf(item.estimatedCost?.rateText ?: budget?.suggestedRateText.orEmpty())
-    }
     OutlinedCard(
-        onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -790,13 +932,6 @@ private fun ItineraryCard(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(5.dp),
         ) {
-            if (item.timeText.isNotBlank()) {
-                Text(
-                    item.timeText,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
             Text(item.title, style = MaterialTheme.typography.titleMedium)
             if (item.place.isNotBlank()) {
                 Text(item.place, style = MaterialTheme.typography.bodyMedium)
@@ -808,18 +943,27 @@ private fun ItineraryCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            ItineraryPhotoStrip(photoIds, readPhoto, onViewPhotos)
             item.expenses.forEach { expense ->
-                TextButton(
-                    onClick = { onEditExpense(expense.id) },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
+                val expenseDetails: @Composable () -> Unit = {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        Text("${expense.timeText} · ${expense.categoryText}")
+                        Column(Modifier.weight(1f).padding(end = 8.dp)) {
+                            Text("${expense.timeText} · ${expense.categoryText}")
+                            ExpenseDescriptionText(expense.description)
+                        }
                         Text("${expense.amountText} (${expense.secondaryAmountText})")
                     }
+                }
+                if (isReadOnly) {
+                    expenseDetails()
+                } else {
+                    TextButton(
+                        onClick = { onEditExpense(expense.id) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { expenseDetails() }
                 }
             }
             if (item.expenses.isNotEmpty()) {
@@ -833,46 +977,21 @@ private fun ItineraryCard(
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
-            TextButton(onClick = { isCostExpanded = !isCostExpanded }) {
+            item.estimatedCost?.let {
                 Text(
-                    item.estimatedCost?.let { "예상 ${it.convertedKrwText}" }
-                        ?.plus(if (isCostExpanded) " · 접기" else " · 펼치기")
-                        ?: if (isCostExpanded) "예상 비용 접기" else "예상 비용 미입력 · 펼치기"
+                    "예상 비용 ${it.convertedKrwText}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            if (isCostExpanded) {
-                if (budget == null) {
-                    Text("먼저 상단에서 여행 예산을 설정해 주세요.")
-                } else {
-                    ItineraryCostEditor(
-                        label = "예상 비용",
-                        amount = estimatedAmount,
-                        onAmountChange = { estimatedAmount = it },
-                        currencyCode = estimatedCurrency,
-                        onCurrencyChange = { estimatedCurrency = it },
-                        rate = estimatedRate,
-                        onRateChange = { estimatedRate = it },
-                        budgetCurrencyCode = budget.currencyCode,
-                    )
-                    TextButton(
-                        onClick = {
-                            onSaveEstimatedCost(
-                                item.id,
-                                estimatedAmount,
-                                estimatedCurrency,
-                                estimatedRate,
-                            )
-                        },
-                    ) { Text("예상 비용 저장") }
+            if (canAddPhotos || !isReadOnly) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    if (canAddPhotos) TextButton(onClick = onAddPhotos) { Text("사진 추가") }
+                    if (!isReadOnly) TextButton(onClick = onAddExpense) { Text("지출 추가") }
                 }
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                TextButton(onClick = onAddExpense) { Text("지출 추가") }
-                TextButton(onClick = onMoveUp, enabled = item.canMoveUp) { Text("위로") }
-                TextButton(onClick = onMoveDown, enabled = item.canMoveDown) { Text("아래로") }
             }
         }
     }
@@ -880,19 +999,21 @@ private fun ItineraryCard(
 
 @Composable
 private fun StandaloneExpenseCard(
+    isReadOnly: Boolean,
     expense: ExpenseUiModel,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    OutlinedCard(onClick = onClick, modifier = modifier.fillMaxWidth()) {
+    val content: @Composable () -> Unit = {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column {
+            Column(Modifier.weight(1f).padding(end = 8.dp)) {
                 Text("추가 지출", style = MaterialTheme.typography.labelLarge)
-                Text("${expense.timeText} · ${expense.categoryText}")
+                Text(expense.categoryText)
+                ExpenseDescriptionText(expense.description)
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(expense.amountText, style = MaterialTheme.typography.titleMedium)
@@ -904,6 +1025,33 @@ private fun StandaloneExpenseCard(
             }
         }
     }
+    if (isReadOnly) {
+        OutlinedCard(modifier = modifier.fillMaxWidth()) { content() }
+    } else {
+        OutlinedCard(onClick = onClick, modifier = modifier.fillMaxWidth()) { content() }
+    }
+}
+
+@Composable
+private fun ExpenseDescriptionText(description: String) {
+    if (description.isNotBlank()) {
+        Text(
+            description,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun ExpenseDescriptionField(value: String, onValueChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text("설명 (선택)") },
+        maxLines = 3,
+    )
 }
 
 @Composable
@@ -913,11 +1061,12 @@ private fun ExpenseInputDialog(
     targetText: String,
     inputRate: BudgetInputRate?,
     onDismiss: () -> Unit,
-    onSave: (String, ExpenseCategory, String) -> Unit,
+    onSave: (String, ExpenseCategory, String, String) -> Unit,
 ) {
     var amount by rememberSaveable { mutableStateOf("") }
     var categoryName by rememberSaveable { mutableStateOf(ExpenseCategory.Food.name) }
     val category = ExpenseCategory.valueOf(categoryName)
+    var description by rememberSaveable { mutableStateOf("") }
     var inputCurrencyCode by rememberSaveable(currencyCode) { mutableStateOf(currencyCode) }
     val parsedAmount = amount.toKrwAmountOrNull()
     val secondaryAmountText = parsedAmount?.let { value ->
@@ -933,7 +1082,10 @@ private fun ExpenseInputDialog(
         onDismissRequest = onDismiss,
         title = { Text("지출 추가") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 Text("기록 시각 $occurredAtText")
                 if (targetText.isNotBlank()) {
                     Text(
@@ -977,11 +1129,14 @@ private fun ExpenseInputDialog(
                         }
                     }
                 }
+                if (category == ExpenseCategory.Other) {
+                    ExpenseDescriptionField(description) { description = it }
+                }
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { onSave(amount, category, inputCurrencyCode) },
+                onClick = { onSave(amount, category, inputCurrencyCode, description) },
                 enabled = amount.isNotBlank(),
             ) { Text("저장") }
         },
@@ -995,13 +1150,14 @@ private fun ExpenseEditDialog(
     tripCurrencyCode: String,
     errorMessage: String?,
     onDismiss: () -> Unit,
-    onSave: (String, ExpenseCategory, String, String) -> Unit,
+    onSave: (String, ExpenseCategory, String, String, String) -> Unit,
     onDeleteRequest: () -> Unit,
 ) {
     var amount by rememberSaveable(editor.id) {
         mutableStateOf(editor.amountText.formatMoneyInput())
     }
     var timeText by rememberSaveable(editor.id) { mutableStateOf(editor.timeText) }
+    var description by rememberSaveable(editor.id) { mutableStateOf(editor.description) }
     var categoryName by rememberSaveable(editor.id) { mutableStateOf(editor.category.name) }
     var inputCurrencyCode by rememberSaveable(editor.id) {
         mutableStateOf(editor.currencyCode)
@@ -1117,6 +1273,9 @@ private fun ExpenseEditDialog(
                                 }
                             }
                         }
+                        if (category == ExpenseCategory.Other) {
+                            ExpenseDescriptionField(description) { description = it }
+                        }
                         errorMessage?.let {
                             Text(it, color = MaterialTheme.colorScheme.error)
                         }
@@ -1129,7 +1288,7 @@ private fun ExpenseEditDialog(
                             }
                             TextButton(
                                 onClick = {
-                                    onSave(amount, category, inputCurrencyCode, timeText)
+                                    onSave(amount, category, inputCurrencyCode, timeText, description)
                                 },
                                 enabled = amount.isNotBlank() && timeText.isNotBlank(),
                             ) { Text("수정 저장") }
@@ -1246,6 +1405,8 @@ private val previewState = TripDetailUiState(
     description = "친구와 함께하는 여행",
     days = previewDays,
     selectedDate = previewDays.first().date,
+    isTripOngoing = true,
+    statusText = "여행 1일차",
     itineraryItems = listOf(
         ItineraryItemUiModel(
             1L,
@@ -1262,13 +1423,13 @@ private val previewState = TripDetailUiState(
 @Preview(showBackground = true)
 @Composable
 private fun TripDetailDataPreview() {
-    MaterialTheme { TripDetailScreenContent(uiState = previewState) }
+    TravelViewerTheme { TripDetailScreenContent(uiState = previewState) }
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun TripDetailEmptyPreview() {
-    MaterialTheme {
+    TravelViewerTheme {
         TripDetailScreenContent(uiState = previewState.copy(itineraryItems = emptyList()))
     }
 }
@@ -1276,7 +1437,7 @@ private fun TripDetailEmptyPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun TripDetailErrorPreview() {
-    MaterialTheme {
+    TravelViewerTheme {
         TripDetailScreenContent(
             uiState = TripDetailUiState(isLoading = false, isLoadFailed = true)
         )
@@ -1286,7 +1447,7 @@ private fun TripDetailErrorPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun TripDetailExpensePreview() {
-    MaterialTheme {
+    TravelViewerTheme {
         TripDetailScreenContent(
             uiState = previewState.copy(
                 tripCurrencyCode = "JPY",
@@ -1315,7 +1476,8 @@ private fun TripDetailExpensePreview() {
                     ExpenseUiModel(
                         id = 10,
                         timeText = "12:20",
-                        categoryText = "교통",
+                        categoryText = "기타",
+                        description = "짐 보관 요금",
                         amountText = "1,200 JPY",
                         convertedKrwText = "11,424원",
                         sortMinutes = 740,
@@ -1323,5 +1485,13 @@ private fun TripDetailExpensePreview() {
                 ),
             )
         )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun PastTripDetailPreview() {
+    TravelViewerTheme {
+        TripDetailScreenContent(uiState = previewState.copy(isTripEnded = true, statusText = "여행 종료"))
     }
 }

@@ -76,6 +76,28 @@ class TripDetailViewModelTest {
     }
 
     @Test
+    fun ongoingTrip_defaultsToTodayAndKeepsManualSelection() = runTest {
+        val yesterday = LocalDate.of(2026, 11, 8)
+        val today = LocalDate.of(2026, 11, 9)
+        val trips = FakeTripPlanRepository().apply { setTrips(listOf(sampleTrip.copy(startDate = yesterday))) }
+        val items = FakeItineraryRepository().apply {
+            setItems(listOf(item(1L, yesterday.toString()), item(2L, today.toString())))
+        }
+        val viewModel = createViewModel(trips, items)
+
+        viewModel.load(sampleTrip.id)
+        advanceUntilIdle()
+        assertEquals(today, viewModel.uiState.value.selectedDate)
+        assertEquals(2L, viewModel.uiState.value.itineraryItems.single().id)
+
+        viewModel.onDaySelected(yesterday)
+        items.setItems(listOf(item(3L, yesterday.toString()), item(2L, today.toString())))
+        advanceUntilIdle()
+        assertEquals(yesterday, viewModel.uiState.value.selectedDate)
+        assertEquals(3L, viewModel.uiState.value.itineraryItems.single().id)
+    }
+
+    @Test
     fun daySelection_updatesVisibleItems() = runTest {
         val tripRepository = FakeTripPlanRepository().apply { setTrips(listOf(sampleTrip)) }
         val itineraryRepository = FakeItineraryRepository().apply {
@@ -133,6 +155,22 @@ class TripDetailViewModelTest {
 
         assertTrue(viewModel.uiState.value.isCompleted)
         assertEquals(fixedClock.instant(), tripRepository.getTripPlan(sampleTrip.id)?.completedAt)
+    }
+
+    @Test
+    fun movedScheduleExpense_remainsVisibleOnRecordedDay() = runTest {
+        val trips = FakeTripPlanRepository().apply { setTrips(listOf(sampleTrip)) }
+        val itinerary = FakeItineraryRepository().apply { setItems(listOf(item(1, "2026-11-10"))) }
+        val expenses = FakeExpenseRepository().apply {
+            setExpenses(listOf(expense(8, 1, "2026-11-09", "23800")))
+        }
+        val viewModel = createViewModel(trips, itinerary, expenseRepository = expenses)
+
+        viewModel.load(sampleTrip.id)
+        advanceUntilIdle()
+
+        assertEquals(8L, viewModel.uiState.value.standaloneExpenses.single().id)
+        assertEquals("23,800원", viewModel.uiState.value.selectedDayActualKrwText)
     }
 
     @Test

@@ -103,6 +103,8 @@ data class MapItemUiModel(
     val startTime: LocalTime?,
     val latitude: Double?,
     val longitude: Double?,
+    val providerName: String? = null,
+    val externalId: String? = null,
 ) {
     val hasCoordinates: Boolean get() = latitude != null && longitude != null
 }
@@ -133,4 +135,6 @@ private fun ItineraryMapItem.toUiModel(dayNumber: Int, isAllDays: Boolean) = Map
     startTime = startTime,
     latitude = latitude,
     longitude = longitude,
+    providerName = providerName,
+    externalId = externalId,
 )

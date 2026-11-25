@@ -69,9 +69,10 @@ class CreateTripViewModelTest {
         val event = async(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.events.first()
         }
-        viewModel.onTripTitleChange("제주 여행")
+        viewModel.onTripTitleChange("도쿄 여행")
         viewModel.onTripPlaceChange("제주")
         viewModel.onCountrySelected("JP")
+        viewModel.onTripPlaceChange("도쿄")
         viewModel.onTripDateRangeChange(
             startDate = LocalDate.of(2026, 11, 9),
             endDate = LocalDate.of(2026, 11, 11),
@@ -83,10 +84,11 @@ class CreateTripViewModelTest {
 
         assertEquals(CreateTripEvent.TripCreated(7L), event.await())
         assertEquals(1, repository.createdInputs.size)
-        assertEquals("제주 여행", repository.createdInputs.single().title)
-        assertEquals("제주", repository.createdInputs.single().destination)
+        assertEquals("도쿄 여행", repository.createdInputs.single().title)
+        assertEquals("도쿄", repository.createdInputs.single().destination)
         assertEquals("JP", repository.createdInputs.single().countryCode)
         assertEquals("JPY", repository.createdInputs.single().currencyCode)
+        assertTrue(repository.createdInputs.single().isDraft)
         assertFalse(viewModel.uiState.value.isSaving)
         assertFalse(viewModel.uiState.value.isSaveFailed)
     }

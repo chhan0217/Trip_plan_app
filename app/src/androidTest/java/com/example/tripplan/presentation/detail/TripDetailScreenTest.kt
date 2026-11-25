@@ -5,15 +5,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import com.example.tripplan.presentation.create.ComposeTestActivity
+import com.example.tripplan.presentation.itineraryphoto.ItineraryPhotoViewer
 import java.time.LocalDate
 import java.math.BigDecimal
 import com.example.tripplan.domain.model.TripMoneyDisplayCurrency
@@ -60,13 +66,14 @@ class TripDetailScreenTest {
     }
 
     @Test
-    fun addAction_invokesSelectedDate() {
-        var addedDate: LocalDate? = null
+    fun activeViewer_addScheduleOpensEditorForSelectedDay() {
+        val secondDay = LocalDate.of(2026, 11, 10)
+        var requestedDate: LocalDate? = null
         composeRule.setContent {
             MaterialTheme {
                 TripDetailScreenContent(
-                    uiState = sampleState(),
-                    onAddItinerary = { addedDate = it },
+                    uiState = sampleState().copy(selectedDate = secondDay),
+                    onAddItinerary = { requestedDate = it },
                 )
             }
         }
@@ -74,7 +81,119 @@ class TripDetailScreenTest {
         composeRule.onNodeWithTag("trip_detail_list").performScrollToNode(hasText("일정 추가"))
         composeRule.onNodeWithText("일정 추가").performClick()
 
-        composeRule.runOnIdle { assertEquals(LocalDate.of(2026, 11, 9), addedDate) }
+        composeRule.runOnIdle { assertEquals(secondDay, requestedDate) }
+    }
+
+    @Test
+    fun activeTrip_showsPackingWithoutCopyOrPlaceManagement() {
+        composeRule.setContent {
+            MaterialTheme {
+                TripDetailScreenContent(uiState = sampleState())
+            }
+        }
+
+        composeRule.onNodeWithTag("trip_detail_list").performScrollToNode(hasText("준비물"))
+        composeRule.onNodeWithText("준비물").assertIsDisplayed()
+        composeRule.onNodeWithText("여행 복사").assertDoesNotExist()
+        composeRule.onNodeWithText("장소").assertDoesNotExist()
+    }
+
+    @Test
+    fun ongoingTrip_scheduleOpensPhotoAddDialog() {
+        var openedItem: Long? = null
+        composeRule.setContent {
+            MaterialTheme {
+                TripDetailScreenContent(
+                    uiState = sampleState().copy(
+                        isTripOngoing = true,
+                        itineraryItems = listOf(ItineraryItemUiModel(8, "동문시장", "", "", "", false, false)),
+                    ),
+                    onAddPhotos = { openedItem = it },
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("trip_detail_list").performScrollToNode(hasText("사진 추가"))
+        composeRule.onNodeWithText("사진 추가").performClick()
+        composeRule.runOnIdle { assertEquals(8L, openedItem) }
+    }
+
+    @Test
+    fun endedTrip_showsThreePhotosAndOverflowWithoutAdd() {
+        var opened: Pair<Long, Int>? = null
+        composeRule.setContent {
+            MaterialTheme {
+                TripDetailScreenContent(
+                    uiState = sampleState().copy(
+                        isTripEnded = true,
+                        itineraryItems = listOf(ItineraryItemUiModel(8, "동문시장", "", "", "", false, false)),
+                    ),
+                    photoIdsByItinerary = mapOf(8L to listOf(1L, 2L, 3L, 4L, 5L)),
+                    onViewPhotos = { item, index -> opened = item to index },
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("trip_detail_list").performScrollToNode(hasText("+2"))
+        composeRule.onNodeWithContentDescription("일정 사진 3").performClick()
+        composeRule.runOnIdle { assertEquals(8L to 2, opened) }
+        composeRule.onNodeWithText("+2").performClick()
+        composeRule.runOnIdle { assertEquals(8L to 3, opened) }
+        composeRule.onNodeWithText("사진 추가").assertDoesNotExist()
+    }
+
+    @Test
+    fun photoViewer_startsAtTappedPhotoAndSwipesToNext() {
+        composeRule.setContent {
+            MaterialTheme {
+                ItineraryPhotoViewer(
+                    photoIds = listOf(1L, 2L, 3L),
+                    initialIndex = 1,
+                    readPhoto = { null },
+                    onDismiss = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("2 / 3").assertIsDisplayed()
+        composeRule.onNodeWithTag("itinerary_photo_pager").performTouchInput { swipeLeft() }
+        composeRule.onNodeWithText("3 / 3").assertIsDisplayed()
+    }
+
+    @Test
+    fun endedTrip_isReadOnly() {
+        assertPastTripViewer(sampleState().copy(isTripEnded = true))
+    }
+
+    @Test
+    fun completedTrip_isReadOnly() {
+        assertPastTripViewer(sampleState().copy(isCompleted = true))
+    }
+
+    private fun assertPastTripViewer(state: TripDetailUiState) {
+        var mapIsReadOnly: Boolean? = null
+        composeRule.setContent {
+            MaterialTheme {
+                TripDetailScreenContent(
+                    uiState = state.copy(isExpenseDialogVisible = true),
+                    onItineraryMapClick = { mapIsReadOnly = it },
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("제주 여행").assertIsDisplayed()
+        listOf("파일 공유", "계획 수정", "준비물", "여행 복사", "장소", "여행 완료", "완료 취소").forEach {
+            composeRule.onNodeWithText(it).assertDoesNotExist()
+        }
+        val list = composeRule.onNodeWithTag("trip_detail_list")
+        list.performScrollToNode(hasText("등록된 예산이 없습니다."))
+        composeRule.onNodeWithText("예산 설정").assertDoesNotExist()
+        list.performScrollToNode(hasText("일정 지도에서 보기"))
+        composeRule.onNodeWithText("일정 지도에서 보기").performClick()
+        composeRule.runOnIdle { assertEquals(true, mapIsReadOnly) }
+        list.performScrollToNode(hasText("이 날짜에는 등록된 일정이 없습니다."))
+        composeRule.onNodeWithText("지출 추가").assertDoesNotExist()
+        composeRule.onNodeWithText("일정 추가").assertDoesNotExist()
     }
 
     @Test
@@ -89,7 +208,7 @@ class TripDetailScreenTest {
             }
         }
 
-        composeRule.onNodeWithText("여행 수정").performClick()
+        composeRule.onNodeWithText("계획 수정").performClick()
 
         composeRule.runOnIdle { org.junit.Assert.assertTrue(clicked) }
     }
@@ -112,7 +231,7 @@ class TripDetailScreenTest {
     }
 
     @Test
-    fun budgetAndDailyActual_areShownAndCostSectionExpands() {
+    fun budgetDailyActualAndEstimatedCost_areReadOnly() {
         val state = sampleState().copy(
             budget = BudgetSummaryUiModel(
                 currencyCode = "JPY",
@@ -133,6 +252,12 @@ class TripDetailScreenTest {
                     note = "",
                     canMoveUp = false,
                     canMoveDown = false,
+                    estimatedCost = ItineraryCostUiModel(
+                        amountText = "10,000",
+                        currencyCode = "JPY",
+                        rateText = "9.52",
+                        convertedKrwText = "95,200원",
+                    ),
                 )
             ),
         )
@@ -145,10 +270,9 @@ class TripDetailScreenTest {
         composeRule.onNodeWithText("실제 사용 1,700,000원").assertIsDisplayed()
         composeRule.onNodeWithTag("trip_detail_list").performScrollToNode(hasText("171,360원"))
         composeRule.onNodeWithText("171,360원").assertIsDisplayed()
-        composeRule.onNodeWithTag("trip_detail_list")
-            .performScrollToNode(hasText("예상 비용 미입력 · 펼치기"))
-        composeRule.onNodeWithText("예상 비용 미입력 · 펼치기").performClick()
-        composeRule.onNodeWithText("예상 비용").assertIsDisplayed()
+        composeRule.onNodeWithTag("trip_detail_list").performScrollToNode(hasText("예상 비용 95,200원"))
+        composeRule.onNodeWithText("예상 비용 95,200원").assertIsDisplayed()
+        composeRule.onAllNodesWithText("예상 비용 저장").assertCountEquals(0)
     }
 
     @Test
@@ -196,12 +320,34 @@ class TripDetailScreenTest {
         }
 
         composeRule.onNodeWithTag("trip_detail_list")
-            .performScrollToNode(hasText("10:30 · 교통"))
+            .performScrollToNode(hasText("10:30"))
         composeRule.onNodeWithText("추가 지출").assertIsDisplayed()
-        composeRule.onNodeWithText("10:30 · 교통").assertIsDisplayed()
+        composeRule.onNodeWithText("10:30").assertIsDisplayed()
+        composeRule.onNodeWithText("교통").assertIsDisplayed()
         composeRule.onNodeWithText("1,200 JPY").assertIsDisplayed()
         composeRule.onNodeWithText("추가 지출").performClick()
         composeRule.runOnIdle { assertEquals(8L, editedExpenseId) }
+    }
+
+    @Test
+    fun expenseInput_onlyOtherShowsDescriptionAndPassesItToSave() {
+        var savedDescription: String? = null
+        composeRule.setContent {
+            MaterialTheme {
+                TripDetailScreenContent(
+                    uiState = sampleState().copy(isExpenseDialogVisible = true),
+                    onRecordExpense = { _, _, _, description -> savedDescription = description },
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("설명 (선택)").assertDoesNotExist()
+        composeRule.onNodeWithText("기타").performClick()
+        composeRule.onNodeWithText("금액 (KRW)").performTextInput("12000")
+        composeRule.onNodeWithText("설명 (선택)").performTextInput("짐 보관 요금")
+        composeRule.onNodeWithText("저장").performClick()
+
+        composeRule.runOnIdle { assertEquals("짐 보관 요금", savedDescription) }
     }
 
     @Test
@@ -226,8 +372,8 @@ class TripDetailScreenTest {
                         tripCurrencyCode = "JPY",
                         editingExpense = editor,
                     ),
-                    onUpdateExpense = { amount, category, currency, time ->
-                        update = listOf(amount, category, currency, time)
+                    onUpdateExpense = { amount, category, currency, time, description ->
+                        update = listOf(amount, category, currency, time, description)
                     },
                 )
             }
@@ -240,7 +386,7 @@ class TripDetailScreenTest {
 
         composeRule.runOnIdle {
             assertEquals(
-                listOf("2,500", ExpenseCategory.Transportation, "JPY", "10:30"),
+                listOf("2,500", ExpenseCategory.Transportation, "JPY", "10:30", ""),
                 update,
             )
         }

@@ -7,10 +7,13 @@ import kotlinx.serialization.Serializable
 data object HomeRoute : NavKey
 
 @Serializable
-data object CreateTripRoute : NavKey
+data class CreateTripRoute(val sessionId: String = java.util.UUID.randomUUID().toString()) : NavKey
 
 @Serializable
 data class TripDetailRoute(val tripPlanId: Long) : NavKey
+
+@Serializable
+data class TripPlanningRoute(val tripPlanId: Long) : NavKey
 
 @Serializable
 data class TripPlanExportRoute(val tripPlanId: Long) : NavKey
@@ -36,7 +39,8 @@ data class ItineraryEditorRoute(
     val tripPlanId: Long,
     val itemId: Long? = null,
     val initialDate: String? = null,
+    val sessionId: String = java.util.UUID.randomUUID().toString(),
 ) : NavKey
 
 @Serializable
-data class ItineraryMapRoute(val tripPlanId: Long) : NavKey
+data class ItineraryMapRoute(val tripPlanId: Long, val isReadOnly: Boolean = false) : NavKey

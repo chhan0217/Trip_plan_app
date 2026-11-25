@@ -14,8 +14,11 @@ import androidx.room.RoomDatabase
         TripBudgetEntity::class,
         BudgetEntryEntity::class,
         ExpenseEntity::class,
+        PlaceCandidateEntity::class,
+        LodgingEntity::class,
+        ItineraryPhotoEntity::class,
     ],
-    version = 10,
+    version = 16,
 )
 abstract class TripPlanDatabase : RoomDatabase() {
     abstract fun tripPlanDao(): TripPlanDao
@@ -26,4 +29,7 @@ abstract class TripPlanDatabase : RoomDatabase() {
     abstract fun exchangeRateDao(): ExchangeRateDao
     abstract fun tripBudgetDao(): TripBudgetDao
     abstract fun expenseDao(): ExpenseDao
+    abstract fun placeCandidateDao(): PlaceCandidateDao
+    abstract fun lodgingDao(): LodgingDao
+    abstract fun itineraryPhotoDao(): ItineraryPhotoDao
 }

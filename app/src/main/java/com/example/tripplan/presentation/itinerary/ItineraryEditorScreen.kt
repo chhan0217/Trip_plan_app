@@ -8,12 +8,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -30,16 +33,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.tripplan.R
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
 @Composable
@@ -47,11 +55,13 @@ fun ItineraryEditorScreen(
     tripPlanId: Long,
     itemId: Long?,
     initialDate: LocalDate?,
+    sessionId: String,
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit = {},
     onCompleted: () -> Unit = {},
     viewModel: ItineraryEditorViewModel = hiltViewModel(
-        key = "itinerary-editor-$tripPlanId-${itemId ?: "new"}",
+        key = if (itemId == null) "itinerary-editor-$tripPlanId-new-$sessionId"
+            else "itinerary-editor-$tripPlanId-item-$itemId",
     ),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -75,6 +85,7 @@ fun ItineraryEditorScreen(
         onEndTimeChange = viewModel::onEndTimeChange,
         onNoteChange = viewModel::onNoteChange,
         onSaveClick = viewModel::onSaveClick,
+        onSaveAndContinueClick = viewModel::onSaveAndContinueClick,
         onDeleteRequest = viewModel::onDeleteRequest,
         onDeleteDismiss = viewModel::onDeleteDismiss,
         onDeleteConfirm = viewModel::onDeleteConfirm,
@@ -95,6 +106,7 @@ internal fun ItineraryEditorScreenContent(
     onEndTimeChange: (String) -> Unit = {},
     onNoteChange: (String) -> Unit = {},
     onSaveClick: () -> Unit = {},
+    onSaveAndContinueClick: () -> Unit = {},
     onDeleteRequest: () -> Unit = {},
     onDeleteDismiss: () -> Unit = {},
     onDeleteConfirm: () -> Unit = {},
@@ -124,6 +136,7 @@ internal fun ItineraryEditorScreenContent(
                     onEndTimeChange = onEndTimeChange,
                     onNoteChange = onNoteChange,
                     onSaveClick = onSaveClick,
+                    onSaveAndContinueClick = onSaveAndContinueClick,
                     onDeleteRequest = onDeleteRequest,
                 )
             }
@@ -183,8 +196,11 @@ private fun EditorForm(
     onEndTimeChange: (String) -> Unit,
     onNoteChange: (String) -> Unit,
     onSaveClick: () -> Unit,
+    onSaveAndContinueClick: () -> Unit,
     onDeleteRequest: () -> Unit,
 ) {
+    var timePickerTarget by rememberSaveable { mutableStateOf<TimePickerTarget?>(null) }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -287,28 +303,28 @@ private fun EditorForm(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    OutlinedTextField(
+                    TimeSelectionField(
+                        label = "시작 시간",
                         value = uiState.startTime,
-                        onValueChange = onStartTimeChange,
                         modifier = Modifier.weight(1f),
-                        label = { Text("시작 시간") },
-                        placeholder = { Text("09:00") },
                         isError = uiState.isTimeError,
-                        singleLine = true,
+                        testTag = "start_time_picker",
+                        onSelectClick = { timePickerTarget = TimePickerTarget.Start },
+                        onClearClick = { onStartTimeChange("") },
                     )
-                    OutlinedTextField(
+                    TimeSelectionField(
+                        label = "종료 시간",
                         value = uiState.endTime,
-                        onValueChange = onEndTimeChange,
                         modifier = Modifier.weight(1f),
-                        label = { Text("종료 시간") },
-                        placeholder = { Text("10:30") },
                         isError = uiState.isTimeError,
-                        singleLine = true,
+                        testTag = "end_time_picker",
+                        onSelectClick = { timePickerTarget = TimePickerTarget.End },
+                        onClearClick = { onEndTimeChange("") },
                     )
                 }
                 if (uiState.isTimeError) {
                     Text(
-                        "시간은 HH:mm 형식이며 종료 시간은 시작 시간보다 빠를 수 없습니다.",
+                        "종료 시간은 시작 시간보다 빠를 수 없습니다.",
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
                     )
@@ -327,13 +343,32 @@ private fun EditorForm(
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
-                Button(
-                    onClick = onSaveClick,
-                    enabled = !uiState.isSaving,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                ) {
-                    if (uiState.isSaving) CircularProgressIndicator()
-                    else Text(if (uiState.isEdit) "일정 저장" else "일정 추가")
+                if (uiState.isEdit) {
+                    Button(
+                        onClick = onSaveClick,
+                        enabled = !uiState.isSaving,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                    ) {
+                        if (uiState.isSaving) CircularProgressIndicator() else Text("일정 저장")
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        OutlinedButton(
+                            onClick = onSaveClick,
+                            enabled = !uiState.isSaving,
+                            modifier = Modifier.weight(1f).heightIn(min = 52.dp),
+                        ) { Text("일정 추가") }
+                        Button(
+                            onClick = onSaveAndContinueClick,
+                            enabled = !uiState.isSaving,
+                            modifier = Modifier.weight(1f).heightIn(min = 52.dp),
+                        ) {
+                            if (uiState.isSaving) CircularProgressIndicator() else Text("다음 일정")
+                        }
+                    }
                 }
                 if (uiState.isEdit) {
                     OutlinedButton(
@@ -346,7 +381,160 @@ private fun EditorForm(
         }
         item { Text("", modifier = Modifier.padding(bottom = 8.dp)) }
     }
+
+    timePickerTarget?.let { target ->
+        ScheduleTimePickerDialog(
+            title = if (target == TimePickerTarget.Start) "시작 시간 선택" else "종료 시간 선택",
+            initialTime = initialPickerTime(
+                target = target,
+                startTime = uiState.startTime,
+                endTime = uiState.endTime,
+            ),
+            onDismiss = { timePickerTarget = null },
+            onConfirm = { selectedTime ->
+                val formattedTime = selectedTime.format(timeFormatter)
+                if (target == TimePickerTarget.Start) {
+                    onStartTimeChange(formattedTime)
+                } else {
+                    onEndTimeChange(formattedTime)
+                }
+                timePickerTarget = null
+            },
+        )
+    }
 }
+
+@Composable
+private fun TimeSelectionField(
+    label: String,
+    value: String,
+    isError: Boolean,
+    testTag: String,
+    onSelectClick: () -> Unit,
+    onClearClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+        )
+        OutlinedButton(
+            onClick = onSelectClick,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag(testTag),
+        ) {
+            Text(value.ifBlank { "시간 선택" })
+        }
+        if (value.isNotBlank()) {
+            TextButton(
+                onClick = onClearClick,
+                modifier = Modifier.align(Alignment.End).testTag("${testTag}_clear"),
+            ) {
+                Text("지우기")
+            }
+        }
+    }
+}
+
+@Composable
+internal fun ScheduleTimePickerDialog(
+    title: String,
+    initialTime: LocalTime,
+    onDismiss: () -> Unit,
+    onConfirm: (LocalTime) -> Unit,
+) {
+    var hour by rememberSaveable { mutableStateOf(initialTime.hour) }
+    var minute by rememberSaveable { mutableStateOf(initialTime.minute) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        modifier = Modifier.testTag("schedule_time_picker_dialog"),
+        title = { Text(title) },
+        text = {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                TimeValueList(
+                    label = "시",
+                    optionCount = 24,
+                    selectedValue = hour,
+                    onValueSelected = { hour = it },
+                    modifier = Modifier.weight(1f),
+                )
+                TimeValueList(
+                    label = "분",
+                    optionCount = 60,
+                    selectedValue = minute,
+                    onValueSelected = { minute = it },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(LocalTime.of(hour, minute)) }) {
+                Text("확인")
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("취소") } },
+    )
+}
+
+@Composable
+private fun TimeValueList(
+    label: String,
+    optionCount: Int,
+    selectedValue: Int,
+    onValueSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = (selectedValue - 1).coerceAtLeast(0))
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(label, style = MaterialTheme.typography.labelLarge)
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxWidth().height(192.dp).selectableGroup().testTag("time_values_$label"),
+        ) {
+            items(optionCount) { value ->
+                FilterChip(
+                    selected = value == selectedValue,
+                    onClick = { onValueSelected(value) },
+                    label = { Text("${value.toString().padStart(2, '0')}$label") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ScheduleTimePickerPreview() {
+    MaterialTheme {
+        ScheduleTimePickerDialog(
+            title = "시작 시간 선택",
+            initialTime = LocalTime.of(9, 30),
+            onDismiss = {},
+            onConfirm = {},
+        )
+    }
+}
+
+private fun initialPickerTime(
+    target: TimePickerTarget,
+    startTime: String,
+    endTime: String,
+): LocalTime {
+    val start = startTime.toLocalTimeOrNull()
+    val end = endTime.toLocalTimeOrNull()
+    return when (target) {
+        TimePickerTarget.Start -> start ?: LocalTime.of(9, 0)
+        TimePickerTarget.End -> end ?: start?.plusHours(1) ?: LocalTime.of(10, 0)
+    }
+}
+
+private fun String.toLocalTimeOrNull(): LocalTime? = runCatching {
+    LocalTime.parse(this, timeFormatter)
+}.getOrNull()
+
+private enum class TimePickerTarget { Start, End }
 
 @Composable
 private fun GoogleMapsButton(uiState: ItineraryEditorUiState) {
@@ -435,3 +623,4 @@ private fun ItineraryErrorPreview() {
 }
 
 private val dayFormatter = DateTimeFormatter.ofPattern("MM.dd")
+private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")

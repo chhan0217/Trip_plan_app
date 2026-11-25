@@ -1,6 +1,7 @@
 package com.example.tripplan.domain.usecase
 
 import com.example.tripplan.domain.model.Expense
+import com.example.tripplan.domain.model.ExpenseCategory
 import com.example.tripplan.domain.model.RecordExpenseInput
 import com.example.tripplan.domain.model.UpdateExpenseInput
 import com.example.tripplan.domain.repository.ExpenseRepository
@@ -40,6 +41,7 @@ class RecordExpenseUseCase @Inject constructor(
                     BudgetCalculator.convertToKrw(input.amount, input.krwPerUnit)
                 },
                 category = input.category,
+                description = input.category.descriptionFor(input.description),
                 createdAt = clock.instant(),
             )
         )
@@ -74,6 +76,7 @@ class UpdateExpenseUseCase @Inject constructor(
             currencyCode = input.currencyCode,
             convertedKrwAmount = convertedKrwAmount,
             category = input.category,
+            description = input.category.descriptionFor(input.description),
         )
         return if (repository.updateExpense(updated)) {
             ExpenseMutationResult.Success
@@ -99,3 +102,6 @@ sealed interface ExpenseMutationResult {
     data object InvalidAmount : ExpenseMutationResult
     data object NotFound : ExpenseMutationResult
 }
+
+private fun ExpenseCategory.descriptionFor(text: String): String =
+    if (this == ExpenseCategory.Other) text.trim() else ""

@@ -102,6 +102,28 @@ class ItineraryMutationUseCasesTest {
     }
 
     @Test
+    fun changeDate_preservesScheduleFieldsAndNormalizesBothDays() = runTest {
+        val trips = FakeTripPlanRepository().apply { setTrips(listOf(sampleTrip)) }
+        val moving = item(2L, firstDate, 0).copy(
+            placeId = 55L,
+            note = "예약 확인",
+            startTime = java.time.LocalTime.of(10, 30),
+            endTime = java.time.LocalTime.of(11, 0),
+        )
+        val items = FakeItineraryRepository().apply {
+            setItems(listOf(moving, item(1L, firstDate, 1), item(3L, secondDate, 3)))
+        }
+
+        val result = UpdateItineraryItemUseCase(trips, items).changeDate(moving.id, secondDate)
+
+        assertEquals(ItineraryMutationResult.Success(moving.id), result)
+        val saved = items.observeItems(sampleTrip.id).first().associateBy { it.id }
+        assertEquals(0, saved.getValue(1L).order)
+        assertEquals(moving.copy(date = secondDate, order = 0), saved.getValue(2L))
+        assertEquals(1, saved.getValue(3L).order)
+    }
+
+    @Test
     fun delete_removesItemAndNormalizesRemainingOrders() = runTest {
         val items = FakeItineraryRepository().apply {
             setItems(listOf(item(1L, firstDate, 0), item(2L, firstDate, 5)))

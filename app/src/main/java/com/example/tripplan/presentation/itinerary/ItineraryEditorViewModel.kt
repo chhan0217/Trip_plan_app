@@ -172,7 +172,11 @@ class ItineraryEditorViewModel @Inject constructor(
     fun onEndTimeChange(value: String) = updateInput { copy(endTime = value, isTimeError = false) }
     fun onNoteChange(value: String) = updateInput { copy(note = value) }
 
-    fun onSaveClick() {
+    fun onSaveClick() = save(continueAdding = false)
+
+    fun onSaveAndContinueClick() = save(continueAdding = true)
+
+    private fun save(continueAdding: Boolean) {
         val state = _uiState.value
         if (state.isSaving) return
         val selectedDate = state.selectedDate ?: return
@@ -230,7 +234,31 @@ class ItineraryEditorViewModel @Inject constructor(
                 if (result !is ItineraryMutationResult.Success) {
                     createdPlaceId?.let { deletePlace(it) }
                 }
-                handleMutationResult(result, ItineraryEditorEvent.Saved)
+                if (continueAdding && result is ItineraryMutationResult.Success) {
+                    placeSearchJob?.cancel()
+                    _uiState.update {
+                        it.copy(
+                            isSaving = false,
+                            title = "",
+                            place = "",
+                            selectedPlaceId = null,
+                            selectedPlaceAddress = "",
+                            selectedPlaceLatitude = null,
+                            selectedPlaceLongitude = null,
+                            selectedExternalPlaceId = null,
+                            placeSuggestions = emptyList(),
+                            isPlaceSearchLoading = false,
+                            startTime = "",
+                            endTime = "",
+                            note = "",
+                            isTitleError = false,
+                            isTimeError = false,
+                            isSaveFailed = false,
+                        )
+                    }
+                } else {
+                    handleMutationResult(result, ItineraryEditorEvent.Saved)
+                }
             } catch (error: CancellationException) {
                 throw error
             } catch (_: Exception) {

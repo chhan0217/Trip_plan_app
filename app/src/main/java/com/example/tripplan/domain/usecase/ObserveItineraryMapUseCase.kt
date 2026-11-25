@@ -40,6 +40,8 @@ class ObserveItineraryMapUseCase @Inject constructor(
                         orderInDay = order,
                         latitude = place?.latitude,
                         longitude = place?.longitude,
+                        providerName = place?.providerName,
+                        externalId = place?.externalId,
                     )
                 },
             )

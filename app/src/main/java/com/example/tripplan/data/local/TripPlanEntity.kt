@@ -24,4 +24,6 @@ data class TripPlanEntity(
     val countryCode: String = "KR",
     @ColumnInfo(defaultValue = "'KRW'")
     val currencyCode: String = "KRW",
+    @ColumnInfo(defaultValue = "0")
+    val isDraft: Boolean = false,
 )

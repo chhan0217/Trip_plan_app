@@ -150,7 +150,14 @@ data class HomeTripUiModel(
     val dateText: String,
     val placeText: String,
     val statusText: String = "",
+    val section: HomeTripSection = HomeTripSection.Current,
 )
+
+enum class HomeTripSection {
+    Current,
+    Draft,
+    Past,
+}
 
 private fun List<TripPlan>.toHomeUiState(getTripStatus: GetTripStatusUseCase): HomeUiState {
     return HomeUiState(
@@ -159,13 +166,14 @@ private fun List<TripPlan>.toHomeUiState(getTripStatus: GetTripStatusUseCase): H
     )
 }
 
-private fun TripPlan.toHomeUiModel(getTripStatus: GetTripStatusUseCase): HomeTripUiModel = HomeTripUiModel(
-    id = id,
-    title = title,
-    dateText = "${startDate.format(homeDateFormatter)} - ${endDate.format(homeDateFormatter)}",
-    placeText = destination,
-    statusText = getTripStatus(this).let { status ->
-        if (status.isCompleted) "완료" else when (status.dateStatus.phase) {
+private fun TripPlan.toHomeUiModel(getTripStatus: GetTripStatusUseCase): HomeTripUiModel {
+    val status = getTripStatus(this)
+    return HomeTripUiModel(
+        id = id,
+        title = title,
+        dateText = "${startDate.format(homeDateFormatter)} - ${endDate.format(homeDateFormatter)}",
+        placeText = destination,
+        statusText = if (status.isCompleted) "완료" else when (status.dateStatus.phase) {
             TripDatePhase.Upcoming -> "D-${status.dateStatus.daysUntilStart}"
             TripDatePhase.Ongoing -> if (status.dateStatus.currentDayNumber == 1) {
                 "D-Day"
@@ -173,9 +181,14 @@ private fun TripPlan.toHomeUiModel(getTripStatus: GetTripStatusUseCase): HomeTri
                 "여행 ${status.dateStatus.currentDayNumber}일차"
             }
             TripDatePhase.Ended -> "여행 종료"
-        }
-    },
-)
+        },
+        section = when {
+            isDraft -> HomeTripSection.Draft
+            status.isCompleted || status.dateStatus.phase == TripDatePhase.Ended -> HomeTripSection.Past
+            else -> HomeTripSection.Current
+        },
+    )
+}
 
 private val homeDateFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd")
 

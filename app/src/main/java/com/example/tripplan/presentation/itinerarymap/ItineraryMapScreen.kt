@@ -63,6 +63,8 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -71,7 +73,7 @@ import java.time.format.DateTimeFormatter
 fun ItineraryMapScreen(
     tripPlanId: Long,
     onBackClick: () -> Unit,
-    onEditItinerary: (Long) -> Unit,
+    onEditItinerary: ((Long) -> Unit)?,
     viewModel: ItineraryMapViewModel = hiltViewModel(key = "itinerary-map-$tripPlanId"),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -92,7 +94,7 @@ internal fun ItineraryMapScreenContent(
     onBackClick: () -> Unit = {},
     onDaySelected: (LocalDate?) -> Unit = {},
     onItemSelected: (Long?) -> Unit = {},
-    onEditItinerary: (Long) -> Unit = {},
+    onEditItinerary: ((Long) -> Unit)? = null,
     mapConfigured: Boolean = BuildConfig.MAPS_API_KEY.isNotBlank() &&
         BuildConfig.MAPS_API_KEY != "DEFAULT_API_KEY",
 ) {
@@ -265,7 +267,7 @@ private fun numberedMarkerIcon(label: String, color: Color, selected: Boolean): 
 private fun ScheduleSheet(
     uiState: ItineraryMapUiState,
     onItemSelected: (Long?) -> Unit,
-    onEditItinerary: (Long) -> Unit,
+    onEditItinerary: ((Long) -> Unit)?,
 ) {
     Column(Modifier.fillMaxWidth().height(420.dp).padding(top = 8.dp)) {
         Text(
@@ -285,7 +287,7 @@ private fun ScheduleSheet(
                         item = item,
                         selected = item.id == uiState.selectedItemId,
                         onClick = { onItemSelected(if (item.id == uiState.selectedItemId) null else item.id) },
-                        onEdit = { onEditItinerary(item.id) },
+                        onEdit = onEditItinerary?.let { edit -> { edit(item.id) } },
                     )
                 }
             }
@@ -294,7 +296,7 @@ private fun ScheduleSheet(
 }
 
 @Composable
-private fun ScheduleMapCard(item: MapItemUiModel, selected: Boolean, onClick: () -> Unit, onEdit: () -> Unit) {
+private fun ScheduleMapCard(item: MapItemUiModel, selected: Boolean, onClick: () -> Unit, onEdit: (() -> Unit)?) {
     val context = LocalContext.current
     OutlinedCard(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
@@ -319,16 +321,29 @@ private fun ScheduleMapCard(item: MapItemUiModel, selected: Boolean, onClick: ()
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     if (item.hasCoordinates) {
                         TextButton(onClick = {
-                            val uri = Uri.parse("https://www.google.com/maps/search/?api=1&query=${item.latitude},${item.longitude}")
+                            val uri = Uri.parse(item.googleMapsUrl())
                             context.startActivity(Intent(Intent.ACTION_VIEW, uri))
                         }) { Text("Google 지도") }
                     }
-                    TextButton(onClick = onEdit) { Text("일정 보기") }
+                    if (onEdit != null) TextButton(onClick = onEdit) { Text("일정 보기") }
                 }
             }
         }
     }
 }
+
+internal fun MapItemUiModel.googleMapsUrl(): String {
+    val query = address.ifBlank { placeName }
+    return if (providerName == GOOGLE_PLACES_PROVIDER && !externalId.isNullOrBlank()) {
+        "https://www.google.com/maps/search/?api=1&query=${query.urlEncoded()}" +
+            "&query_place_id=${externalId.urlEncoded()}"
+    } else {
+        "https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}"
+    }
+}
+
+private fun String.urlEncoded(): String =
+    URLEncoder.encode(this, StandardCharsets.UTF_8.name()).replace("+", "%20")
 
 @Composable private fun CenterMessage(content: @Composable () -> Unit) =
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { content() }
@@ -345,6 +360,7 @@ private fun dayColor(dayNumber: Int): Color = listOf(
 
 private val ImageVectorBack @Composable get() = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(R.drawable.ic_arrow_back_24)
 private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+private const val GOOGLE_PLACES_PROVIDER = "Google Places"
 
 @Preview(showBackground = true, widthDp = 400, heightDp = 800)
 @Composable
@@ -356,7 +372,7 @@ private fun ItineraryMapScreenPreview() {
                 days = listOf(MapDayUiModel(LocalDate.of(2026, 12, 1), 1, "12-01")),
                 selectedDate = LocalDate.of(2026, 12, 1),
                 items = listOf(
-                    MapItemUiModel(1, LocalDate.of(2026, 12, 1), 1, "1", "왕궁", "Grand Palace", "Bangkok", LocalTime.of(10, 0), 13.7500, 100.4913),
+                    MapItemUiModel(1, LocalDate.of(2026, 12, 1), 1, "1", "왕궁", "Grand Palace", "Bangkok", LocalTime.of(10, 0), 13.7500, 100.4913, "Google Places", "place-id"),
                     MapItemUiModel(2, LocalDate.of(2026, 12, 1), 1, "2", "점심", "쏨분 씨푸드", "", LocalTime.of(12, 30), null, null),
                 ),
             ),

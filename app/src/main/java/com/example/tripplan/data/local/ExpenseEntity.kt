@@ -1,5 +1,6 @@
 package com.example.tripplan.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -41,4 +42,6 @@ data class ExpenseEntity(
     val convertedKrwAmount: String,
     val category: String,
     val createdAt: Long,
+    @ColumnInfo(defaultValue = "")
+    val description: String = "",
 )

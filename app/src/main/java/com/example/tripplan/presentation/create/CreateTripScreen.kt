@@ -1,6 +1,7 @@
 package com.example.tripplan.presentation.create
 
 import androidx.compose.foundation.BorderStroke
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePickerDialog
@@ -64,10 +66,11 @@ import java.time.format.DateTimeFormatter
 
 @Composable
 fun CreateTripScreen(
+    sessionId: String,
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit = {},
     onTripCreated: (Long) -> Unit = {},
-    viewModel: CreateTripViewModel = hiltViewModel(),
+    viewModel: CreateTripViewModel = hiltViewModel(key = "create-trip-$sessionId"),
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -109,6 +112,12 @@ internal fun CreateTripScreenContent(
     onSaveClick: () -> Unit = {},
 ) {
     var isDatePickerVisible by rememberSaveable { mutableStateOf(false) }
+    var showDiscardConfirmation by rememberSaveable { mutableStateOf(false) }
+    val hasInput = uiState.tripTitle.isNotBlank() || uiState.tripPlace.isNotBlank() ||
+        uiState.startDate != null || uiState.endDate != null || uiState.description.isNotBlank() ||
+        uiState.countryCode != com.example.tripplan.domain.model.CountryCurrencyCatalog.default.countryCode
+    val requestExit = { if (hasInput) showDiscardConfirmation = true else onBackClick() }
+    BackHandler(onBack = requestExit)
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -122,7 +131,7 @@ internal fun CreateTripScreenContent(
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            CreateTripHeader(onBackClick = onBackClick)
+            CreateTripHeader(onBackClick = requestExit)
             TripInfoFields(
                 uiState = uiState,
                 onTripTitleChange = onTripTitleChange,
@@ -152,7 +161,7 @@ internal fun CreateTripScreenContent(
                         color = MaterialTheme.colorScheme.onPrimary,
                     )
                 } else {
-                    Text("여행 만들기")
+                    Text("일정 작성하기")
                 }
             }
         }
@@ -167,6 +176,15 @@ internal fun CreateTripScreenContent(
                 onTripDateRangeChange(startDate, endDate)
                 isDatePickerVisible = false
             },
+        )
+    }
+    if (showDiscardConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDiscardConfirmation = false },
+            title = { Text("입력 취소") },
+            text = { Text("작성 중인 새 여행 정보가 사라집니다. 나갈까요?") },
+            confirmButton = { TextButton(onClick = onBackClick) { Text("나가기") } },
+            dismissButton = { TextButton(onClick = { showDiscardConfirmation = false }) { Text("계속 작성") } },
         )
     }
 }

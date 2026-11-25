@@ -19,6 +19,8 @@ data class ItineraryMapItem(
     val orderInDay: Int,
     val latitude: Double?,
     val longitude: Double?,
+    val providerName: String? = null,
+    val externalId: String? = null,
 ) {
     val hasCoordinates: Boolean get() = latitude != null && longitude != null
 }

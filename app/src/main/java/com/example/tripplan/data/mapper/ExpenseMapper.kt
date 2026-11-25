@@ -20,6 +20,7 @@ fun ExpenseEntity.toDomain() = Expense(
     convertedKrwAmount = convertedKrwAmount.toBigDecimal(),
     category = ExpenseCategory.valueOf(category),
     createdAt = Instant.ofEpochMilli(createdAt),
+    description = description,
 )
 
 fun Expense.toEntity() = ExpenseEntity(
@@ -35,4 +36,5 @@ fun Expense.toEntity() = ExpenseEntity(
     convertedKrwAmount = convertedKrwAmount.toPlainString(),
     category = category.name,
     createdAt = createdAt.toEpochMilli(),
+    description = description,
 )
